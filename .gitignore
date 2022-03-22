@@ -3,5 +3,10 @@
 .RData
 .Ruserdata
 Net-Adopt.Rproj
-.png
-.pdf
+*.png
+*.pdf
+*.csv
+*.xls
+*.xlsx
+*.html
+.DS_Store
