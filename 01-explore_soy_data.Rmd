@@ -1,0 +1,70 @@
+---
+title: "Exploring Brazil data"
+author: "Juan Rocha"
+date: "3/22/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(fs)
+```
+
+Subnational soy exports data from Brazil based on the Trase dataset
+```{r}
+fls <- fs::dir_ls(path = "~/Documents/Projects/DATA/Trase/BRAZIL_SOY_2.5.1_pc/")
+
+fls |> str_subset(".csv")
+
+dat <- read_csv(file = str_subset(fls, ".csv")) |> 
+    janitor::clean_names()
+```
+
+Note the high proportion of missing values for the zero deforestation variables, the 5yr annual risk and the $CO_{2}$ emmissions data.
+
+```{r}
+skimr::skim(dat)
+```
+
+The data has importer and exporter, but in many cases it is the same company. It means a network representation does not make sense because it results in self-loops. Another alternative is to look at soy flow from the municipality level (N = `r dat$municipality |> unique() |> length()`) to other countries (N = `r dat$country |> unique() |> length()`). But that option implies aggregating over companies who export from the same municipality to the same countries.
+
+Below some descriptive statistics of the Brazil dataset:
+
+- Number of municipalities: `r dat$municipality |> unique() |> length()`
+- Number of states: `r dat$state |> unique() |> length()`
+- Number of unique exporters: `r dat |> pull(exporter) |> unique() |> length() `
+- Number of unique importers: `r dat |> pull(importer) |> unique() |> length() `
+- Number of companies that are both importers and exporters: `r sum(unique(dat$exporter) %in% unique(dat$importer))`
+
+```{r}
+
+dat |> 
+    ggplot(aes(land_use_ha)) + 
+    geom_density()+
+    scale_x_log10()
+```
+
+```{r}
+dat |> 
+    select(exporter, importer) |> 
+    mutate(same = exporter == importer) |> 
+    summarize(same_company = sum(same)/n())
+```
+
+So ~21% of the transactions occur within the same company. Here are the levels of the variable `zero_deforestation_brazil_soy`: `r dat$zero_deforestation_brazil_soy |> unique()`, exist for 72% of the observations. If we want to map any of the results, we will need to reconstruct a geocode with a subnational shape file.
+
+### Ideas for network models:
+
+- In the ergm framework we would need to fit whether a company is likely to commit for a zero deforestation commitment if the company is exporting to other companies who are in turn commited (but then we need who commited first). 
+- Another option is to fit the model with governance indicators at the country scale, but that dataset does not have time if I remember correctly. In that case the unit of analysis are not companies per se, but municipalities - consumer countries.
+- Another alternative to do it at the company level is using bipartite projects and then a one-mode projection on exporting companies. One could use companies attributes but the link weight changes, the info on soy flow is lost (althoug an aggregate can be calculated and used as link attribute).
+- Last, one thing is committing, another is changing behaviour. One can check if commited companies did indeed changed place of production to less deforetation prone places. A delicate issue is how do we deal with time and what are appropriate delays
+
+## To-do
+
+1. Read the papers on Brazil soy trade that Angela and Örjan recommended. Check for what has been done in terms of network modeling and what we can contribute.
+2. Check completness towards the end of the time series, use only recent years for deforestation committments. 
+3. Try out some simple ergms with bipartite projection
+- municipalidad - companias en brazil
+- municipalidad - paises que importan (WGI data WB)

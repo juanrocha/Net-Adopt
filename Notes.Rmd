@@ -1,0 +1,20 @@
+---
+title: "Notes"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Meeting 220215
+
+Rodrigo Botero - Fundacion para el desarrollo sostenible FDS
+
+- Good maps and on ground info
+Vision Amazonia (payment schemes PES) - industry development
+
+Andres Zuluaga (PhD with Etter): head of World Bank lead PES program for sustainable cattle ranching, working now with TNC
+
+Tropenbos Colombia
+
+Pastoral social (locally)
+
