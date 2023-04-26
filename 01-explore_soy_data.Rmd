@@ -1,8 +1,24 @@
 ---
 title: "Exploring Brazil data"
 author: "Juan Rocha"
-date: "3/22/2022"
-output: html_document
+date: "May 2022"
+output:
+    html_document:
+      theme:
+        bootswatch: cosmo
+        code_font:
+            google: Fira Code
+      df_print: paged
+      code_folding: hide
+      toc: true
+      toc_float:
+        collapsed: true
+        smooth_control: true
+      toc_depth: 3
+      fig_caption: true
+      highlight: pygments
+      self_contained: false
+      lib_dir: libs
 ---
 
 ```{r setup, include=FALSE}
@@ -11,9 +27,11 @@ library(tidyverse)
 library(fs)
 ```
 
+## Descriptive stats
+
 Subnational soy exports data from Brazil based on the Trase dataset
 ```{r}
-fls <- fs::dir_ls(path = "~/Documents/Projects/DATA/Trase/BRAZIL_SOY_2.5.1_pc/")
+fls <- fs::dir_ls(path = "~/Documents/Projects/DATA/Trase/BRAZIL_SOY_2.6.0_pc/")
 
 fls |> str_subset(".csv")
 
@@ -40,7 +58,7 @@ Below some descriptive statistics of the Brazil dataset:
 ```{r}
 
 dat |> 
-    ggplot(aes(land_use_ha)) + 
+    ggplot(aes(soy_deforestation_risk)) + 
     geom_density()+
     scale_x_log10()
 ```
@@ -52,19 +70,274 @@ dat |>
     summarize(same_company = sum(same)/n())
 ```
 
-So ~21% of the transactions occur within the same company. Here are the levels of the variable `zero_deforestation_brazil_soy`: `r dat$zero_deforestation_brazil_soy |> unique()`, exist for 72% of the observations. If we want to map any of the results, we will need to reconstruct a geocode with a subnational shape file.
+So ~15% of the transactions occur within the same company. Here are the levels of the variable `zero_deforestation_brazil_soy`: `r dat$zero_deforestation_brazil_soy |> unique()`, exist for 72% of the observations. If we want to map any of the results, we will need to reconstruct a geocode with a subnational shape file.
 
-### Ideas for network models:
+## Ideas for network models
+```{r}
+library(ergm)
+library(ergm.count)
+library(ggnetwork)
+library(ggnewscale)
+library(tictoc)
+```
 
-- In the ergm framework we would need to fit whether a company is likely to commit for a zero deforestation commitment if the company is exporting to other companies who are in turn commited (but then we need who commited first). 
+
+- In the `ergm` framework we would need to fit whether a company is likely to commit for a zero deforestation commitment if the company is exporting to other companies who are in turn commited (but then we need who commited first).
+
+Working only with 2018 for now:
+
+```{r}
+net2018 <- dat |> 
+    filter(year == 2020) |> 
+    select(exporter, importer, soy_equivalent_tonnes) |> 
+    group_by(exporter, importer) |> 
+    summarize(soy = sum(soy_equivalent_tonnes)) |> 
+    filter(exporter != importer) |> # there are 14 self-loops
+    network(directed = TRUE, matrix.type = "edgelist", ignore.eval = TRUE,
+            loops = FALSE)
+
+net2018
+```
+
+The original network had 14 self-loops, deleted in the chunk above. Self-loops might mess up network statistics, and do not influence the spreading of certification.
+
+```{r}
+plot(net2018)
+```
+
+If I group with the commitments variable, there are duplicated links which makes the network multiplex. One problem of the commitments variable is that it exist for each link, it is not an attribute of the exporting or importing company. If it is, it is not traceable from the dataset itself.
+
+One option to deal with the multiplex problem is to calculate the fraction of links that a node is involved on a particular type of certification. Be aware that modeling all would be colinear because the sum of the fractions will add to 1.
+
+```{r}
+exp_commit <- dat |> 
+    filter(year == 2020) |> 
+    select(exporter, commitment = zero_deforestation_brazil_soy) |> 
+    mutate(commitment = case_when(
+        is.na(commitment) ~ "missing",
+        TRUE ~ commitment
+    )) |> 
+    group_by(exporter) |> 
+    add_count() |> # number of outlinks total
+    ungroup() |> group_by(exporter, commitment) |> 
+    add_count(name = "n_type") |> 
+    summarize(prop = n_type / n) |> unique() |> 
+    mutate(commitment = str_to_lower(commitment) |> 
+               str_replace_all(" ", "_")) |> 
+    pivot_wider(names_from = commitment, values_from = prop, values_fill = 0)
+
+exp_commit |> arrange(desc(company_commitment))
+```
+
+```{r}
+imp_commit <- dat |> 
+    filter(year == 2018) |> 
+    select(importer, commitment = zero_deforestation_brazil_soy) |> 
+    mutate(commitment = case_when(
+        is.na(commitment) ~ "missing",
+        TRUE ~ commitment
+    )) |> 
+    group_by(importer) |> 
+    add_count() |> # number of outlinks total
+    ungroup() |> group_by(importer, commitment) |> 
+    add_count(name = "n_type") |> 
+    summarize(prop = n_type / n) |> unique() |> 
+    mutate(commitment = str_to_lower(commitment) |> 
+               str_replace_all(" ", "_")) |> 
+    pivot_wider(names_from = commitment, values_from = prop, values_fill = 0)
+
+imp_commit |> arrange(desc(company_commitment))
+```
+
+```{r}
+
+exp_commit <- exp_commit |> 
+    rename(node = exporter, company_commitment_o = company_commitment,
+           soy_moratorium_o = soy_moratorium) |> 
+    select(-missing, -none)
+
+imp_commit <- imp_commit |> 
+    rename(node = importer, company_commitment_i = company_commitment,
+           soy_moratorium_i = soy_moratorium) |> 
+    select(-missing, -none)
+
+df_commit <- full_join(exp_commit, imp_commit)
+
+# replace NAs with zeroes
+df_commit <- df_commit |> 
+    ungroup() |> 
+    mutate(
+        company_commitment_o = case_when(is.na(company_commitment_o) ~ 0,
+                                         TRUE ~ company_commitment_o),
+        company_commitment_i = case_when(is.na(company_commitment_i) ~ 0,
+                                         TRUE ~ company_commitment_i),
+        soy_moratorium_i = case_when(is.na(soy_moratorium_i) ~ 0, 
+                                     TRUE ~ soy_moratorium_i),
+        soy_moratorium_o = case_when(is.na(soy_moratorium_o) ~ 0,
+                                     TRUE ~ soy_moratorium_o)
+    )
+
+# get the attributes table on the same order as nodes in the network
+df_attr <- tibble(
+    node = network.vertex.names(net2018)
+)
+
+df_attr <- left_join(df_attr, df_commit)
+
+## Add them as node covariates:
+net2018 %v% "soy_moratorium_i" <- df_attr$soy_moratorium_i
+net2018 %v% "soy_moratorium_o" <- df_attr$soy_moratorium_o
+net2018 %v% "company_commitment_o" <- df_attr$company_commitment_o
+net2018 %v% "company_commitment_i" <- df_attr$company_commitment_i
+net2018 %v% "idegree" <- sna::degree(net2018, gmode = "digraph", cmode = "indegree")
+net2018 %v% "odegree" <- sna::degree(net2018, gmode = "digraph", cmode = "outdegree")
+net2018 %v% "bet" <- sna::betweenness(net2018, gmode = "digraph", cmode = "directed", rescale = TRUE)
+
+```
+
+
+```{r}
+summary(net2018~ triadcensus)
+```
+
+```{r}
+ggplot(
+    ggnetwork(net2018, arrow.gap = 0.01), 
+    aes(x = x, y = y, xend = xend, yend = yend)) +
+    geom_edges(
+        aes(color = soy), size = 0.2,
+        arrow = arrow(length = unit(4, "pt"), type = "open")) +
+    scale_color_viridis_c(
+        direction = -1, option = "B",
+        guide = guide_colorbar(title.position = "top")) +
+    new_scale_color() +
+    geom_nodes(aes(size = odegree, color = company_commitment_o), 
+               alpha = 0.25) + 
+    scico::scale_color_scico(palette = "berlin", 
+               guide = guide_colorbar(title.position = "top")) +
+    new_scale_color() +
+    geom_nodes(aes(size = idegree, color = company_commitment_i), 
+               alpha = 0.75) + 
+    scico::scale_color_scico(
+        palette = "batlow",
+        guide = guide_colorbar(title.position = "top")) +
+    scale_size(guide = guide_legend(title.position = "top")) +
+    theme_void() +
+    theme(legend.position = "bottom")
+        
+```
+
+```{r}
+f0 <- ergm(net2018~edges)
+
+summary(f0)
+```
+
+```{r}
+f1 <- ergm(net2018 ~ edges + diff("company_commitment_o") + 
+               diff("company_commitment_i") + diff("soy_moratorium_i") +
+               diff("soy_moratorium_o"))
+summary(f1)
+```
+
+```{r}
+f2 <- ergm(net2018 ~ edges + diff("company_commitment_o") + 
+               diff("company_commitment_i") + 
+               diff("soy_moratorium_i") +
+               diff("soy_moratorium_o") +
+               nodeicov("company_commitment_o") + 
+               nodeicov("company_commitment_i") +
+               nodeicov("soy_moratorium_i") +
+               nodeicov("soy_moratorium_o"))
+summary(f2)
+```
+
+```{r}
+f3 <- ergm(net2018 ~ edges + diff("company_commitment_o") + 
+               diff("company_commitment_i") + 
+               diff("soy_moratorium_i") +
+               diff("soy_moratorium_o") +
+               # nodeicov("company_commitment_o") + 
+               # nodeicov("company_commitment_i") +
+               # nodeicov("soy_moratorium_i") +
+               # nodeicov("soy_moratorium_o") +
+               nodeocov("company_commitment_o") + 
+               nodeocov("company_commitment_i") +
+               nodeocov("soy_moratorium_i") +
+               nodeocov("soy_moratorium_o"))
+summary(f3)
+```
+
+`nodeicov` and `nodeocov` cannot be used at the same time, they are linear combination of each other.
+
+```{r}
+summary(net2018~dgwdsp(0.5))
+```
+
+
+```{r}
+# tic()
+# f4 <- ergm(
+#     net2018 ~ edges + 
+#     dgwdsp(decay = 0.5, cutoff = 5, type = "ISP", fixed = FALSE))
+# toc()
+# summary(f4)
+tic()
+f4 <- ergm(
+    net2018 ~ edges + diff("company_commitment_o") + 
+               diff("company_commitment_i") + 
+               diff("soy_moratorium_i") +
+               diff("soy_moratorium_o") +
+               # nodeicov("company_commitment_o") + 
+               # nodeicov("company_commitment_i") +
+               # nodeicov("soy_moratorium_i") +
+               # nodeicov("soy_moratorium_o") +
+               nodeocov("company_commitment_o") + 
+               nodeocov("company_commitment_i") +
+               nodeocov("soy_moratorium_i") +
+               nodeocov("soy_moratorium_o") + intransitive)
+toc() # 79sec
+summary(f4)
+```
+
+```{r}
+#save(f0,f1,f2,f3,f4, net2018, df_attr, file = "data/simple_ergms.RData")
+```
+
+
+
 - Another option is to fit the model with governance indicators at the country scale, but that dataset does not have time if I remember correctly. In that case the unit of analysis are not companies per se, but municipalities - consumer countries.
-- Another alternative to do it at the company level is using bipartite projects and then a one-mode projection on exporting companies. One could use companies attributes but the link weight changes, the info on soy flow is lost (althoug an aggregate can be calculated and used as link attribute).
-- Last, one thing is committing, another is changing behaviour. One can check if commited companies did indeed changed place of production to less deforetation prone places. A delicate issue is how do we deal with time and what are appropriate delays
+- Another alternative to do it at the company level is using bipartite projections and then a one-mode projection on exporting companies. One could use companies attributes but the link weight changes, the info on soy flow is lost (although an aggregate can be calculated and used as link attribute).
+- Last, one thing is committing, another is changing behaviour. One can check if commited companies did indeed changed place of production to less deforestation prone places. A delicate issue is how do we deal with time and what are appropriate delays
+
+```{r}
+dat |> filter(exporter == "CARGILL AGRICOLA SA") |> 
+    ggplot(aes(y = soy_deforestation_5_year_annual_risk_ha, year)) + 
+    geom_jitter(aes( size = soy_equivalent_tonnes, color = year), alpha = 0.3) +
+    geom_boxplot(aes(group = year, fill = year, color = year), alpha = 0.2) +
+    scale_y_log10()
+```
+
+
+```{r}
+dat |> 
+    ggplot(aes(land_use_ha, soy_deforestation_5_year_annual_risk_ha)) +
+    geom_point(aes(color = as_factor(year)), alpha = 0.5)
+```
+
+
 
 ## To-do
 
 1. Read the papers on Brazil soy trade that Angela and Örjan recommended. Check for what has been done in terms of network modeling and what we can contribute.
-2. Check completness towards the end of the time series, use only recent years for deforestation committments. 
+2. Check completeness towards the end of the time series, use only recent years for deforestation commitments. 
 3. Try out some simple ergms with bipartite projection
 - municipalidad - companias en brazil
 - municipalidad - paises que importan (WGI data WB)
+
+If a company commited trade with a non-commited company, how is it treated in the data?
+
+## Meeting notes:
+
+1. Force to a bipartite network
+    - 
