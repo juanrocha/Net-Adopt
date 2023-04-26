@@ -5,6 +5,15 @@ editor_options:
   chunk_output_type: inline
 ---
 
+## Meeting 230425
+
+Next steps:
+- Correlations across years
+- One-mode projection on municipalities and importing countries
+- Calculate the stochastic block model, p_between vs p_intra
+- Bipartite: bip ~ company_node_zdc + municipality_def_risk + comp_soy_tons +
+prop_certified_soy + company_node_zdc * municiplatiy_def_risk
+
 ## Meeting 220215
 
 Rodrigo Botero - Fundacion para el desarrollo sostenible FDS
@@ -17,4 +26,80 @@ Andres Zuluaga (PhD with Etter): head of World Bank lead PES program for sustain
 Tropenbos Colombia
 
 Pastoral social (locally)
+
+## Meeting 230130
+
+- Read update lit on difference between difussion, contagion, and homophily. Make sure the ergm capture difussion. Test simple vs complex contagion
+- Idea: model with weights -- do ppl with certification change their sourceing or prop of sourcing? (weighted ergm)
+- Ho: Hi risk sites export less over time
+- H0: Commited companies reduce risk exposure
+
+When modeling weights you can assume fixed networks if the structure is not changing much over time. Derive correlation over time over different year / networks.
+- Model flow with fixed network
+- Assumption: If a compnay has one link with agreement, then the company has agreed (from there on).
+- Bipartite from municipalities to exporting companies.
+- For the dynamic contagion problem: is it temporal ergm or SAOM what we need?
+
+## Readings
+
+### Shalizi et al 2011 
+
+**Homophily and contagion are generically confounded in observational social network studies** Sociological Methods & Research 40(2)
+
+- _"Do they act similarly because they are close in the network, due to some form of influence that acts along network ties (or, as it is often suggestively put, ‘‘contagion’’1)? Or rather, are they close in the network because of these similarities, through the processes known as assortative mixing on traits, or more simply as homophily"_
+- _"latent homophily and contagion are generically con- founded with each other (see the second section), and any direct contagion effects cannot be nonparametrically identified from observational data."_
+- _" the effort may prove to be inadequate if any unobserved covariates have a part in both tie selection and in service adoption. This brings us to our fundamental point: To attempt to assign strengths to influence or contagion as opposed to homophily presupposes that the distinc- tion is identifiable, and there have been grounds to doubt this for some time."_
+- _"We now show that in fact, contagion effects are nonparametrically un- identifiable in the presence of latent homophily—that there is just no way to separate selection from influence observationally."_
+- _"the most successful attempts at explicit modeling that handle both homophily and influence, as found in the work of Leenders (2005) and Steglich, Snijders, and Pearson (2004), involve, all at once, strong parametric (exponential-family) assumptions, plus the assumption that observable covariates carry all of the dependence from X to Y and A; the latter is also implicitly assumed by the matching methods of Aral et al. (2009)."_
+
+So ERGMs wont do to this problem, neither regression matching. Here is an option:
+
+- _"By focusing on unreciprocated directed edges—pairs (i,j) where Aij = 1 but Aji = 0, so that j’s prior outcome can be said to influence i’s present, but not i’s prior outcome on j’s present—one can consider the distributions of the outcomes conditional on their partner’s pre- vious outcome, Yi(t)jYj(t - 1) and Yj(t)jYi(t - 1) (though other observable covariates [Zi, Zj] may also be conditioned on). An asymmetry here, revealed by the difference in the corresponding regression coefficients, might then be due to some influence being transmitted along the asymmetric edge, and not due to external common causes (e.g., a new fast food restaurant) or other behaviors attributable to latent characteristics... **it works as a test for direct influence in some models**."_
+
+But they showed that under two conditions it breaks (model can't be trusted): first, influencers differ systematically in their values of X covariates; and second, different neighbourhoods of X have differetn local (linear) relationships to Y. 
+
+- _" latent homophilous variables can produce a substantial apparent contagion effect, including the asymmetry expected of actual contagion."_
+
+Then they go on testing another mechanism on a voter model, where people change relationships and opinions over time depending on their neighbourhood. Two communities emerge:
+
+- _"On regular lattices, this mechanism causes the voter model to self-organize into spatially homogeneous domains, with slowly shifting boundaries between them...social type is an indirect cue to network neighborhood, and accordingly predicts choices"_
+- _"individuals’ choices are not independent conditional on their traits, as is generally assumed in, for example, survey research; diffusion creates the observed dependence... differences in social types are at most related to differences in choices, not to the actual content of those choices."_
+
+- _"we have shown that latent homophily togeth- er with causal effects from the homophilous trait cannot be readily distinguished, observationally, from contagion or influence, and that this remains true even if there is asymmetry between ‘‘senders’’ and ‘‘receivers’’ in the network."_
+- _"we sketch three constructive responses that may be possible when dealing with network data where the causal structure is imperfectly understood or incompletely measured. These are to randomize over the network, place bounds on unidentifiable effects, and **use the division of the network into communities as a proxy for latent homophily.**"_
+
+Randomize the network:
+
+1. Divide the nodes into two groups, by assigning each node to one of two bins with equal probability; let these groups be labeled as J1 and J2.
+2. Let YJ1 (t) be the vector-valued time series obtained by collecting each of the Yi (t) for i ∈ J1 into one object, and similarly for YJ2 (t).
+3. Use some available mechanism to predict the time series for the first bin, YJ1 (t). from its lagged counterpart, YJ2 (t - 1), while controlling for the previous time point within the first half, YJ1 (t - 1).
+
+- _"By repeating this procedure, then averaging over all iterations (producing new partitions each time), there will be a non-zero predictive ability if and only if there is actual contagion or influence"_
+
+Bounds (but they do not elaborate, they propose for future research): 
+
+- _"even when param- eters (e.g., the causal effect of Yj(t - 1) on Yi(t)) are observationally unidentifiable, the distribution of observations may suffice to bound the parameters...  If the bound on this effect excluded zero, that would show the observed association could not be due solely to homophily, but that some contagion must also be present."_
+
+Network clustering:
+
+- _" ‘‘Homophily’’ means simply that individuals tend to choose neighbors that resemble them; this tendency will be especially pronounced if pairs of neighbors also have other neighbors in common, since these pairings will also be driven by homophily. "_
+- _"By the arguments we have presented so far, such control-by-clustering will generally be unable to eliminate the confounding.18 However, in conjunction with the bounds approach mentioned earlier, conditioning on estimated community memberships might still noticeably reduce the confounding. "_
+
+### Shalizi and Rinaldo 2013
+**Consistency under sampling of exponential random graph models** Annals of Statistics 41 (2) 508-535
+
+- _"the parameter estimates obtained from a sub-network may not provide reliable estimates of, or may not even be relatable to, the parameters of the whole network, rendering the task of statistical inference based on a sub-network ill-posed. We formalize this question using the notion of “projective families” from the theory of stochastic processes. We say that a model is projective when the same parameters can be used for both the whole network and any of its sub-networks."_
+- _"Typically, however, ERGMs are not dyadic independence models... Empirically, when using such specifications, one often finds a nontrivial coefficient for such “transitivity” or “clustering,” over and above homophily [26]. It is because of such findings that we ask whether the parameters in these models are projective"_
+- _" Since these models are not projective, however, it is impossible to improve parameter estimates by getting more data, since parameters for smaller sub-graphs just cannot be extrapolated to larger graphs (or vice versa). We thus have a near-dichotomy for ERGMs. Dyadic independence models have separable and independent increments to the statistics, and the resulting family is projective. However, specifications where the sufficient statistics count larger motifs cannot have separable increments, and projectibility does not hold. Such an ERGM may provide a good description of a given social network on a certain set of nodes, but it cannot be projected to give predictions on any larger or more global graph from which that one was drawn."_
+- _"Dyadic independence models are projective models, but are sociologically extremely implausible, and certainly do not manage to reproduce the data well. More interesting specifications, involving clustering terms, never have separable increments. We thus have an impasse which it seems can only be resolved by going to a different family of specifications. One possibility—which, however, requires more and different data—is to model the evolution of networks over time [58]."_
+
+### McFowland and Shalizi
+**Estimating causal peer influence in homophilous social networks by inferring latent locations** Journal of the American Statistical Association
+
+- _"This homophily means that network neighbors are informative about latent qualities a node possesses, providing an alternative route by which a node’s behavior can be predicted from their neighbors."_
+
+They present the equations of the ideal model, and the estimated model, where they use a community detection result to control for homophily. The estimated community is a proxy of the real community and residual unobserved co-variates. For the model to work, an assumption of independence needs to be fulfiled and discussed: that the covariates are ortogonal to the behaviour given the estimated community (see formula).
+
+- _"There may be attributes that are incorporated into Ci which are relevant only to network ties, not behavior, and independent of the other attributes; these are of no concern to us, and can be regarded as part of the noise in the tie-formation process. Network models that satisfy this assumption—that is, that all ties are conditionally independent of each other given the latent variables for each node—are some- times called “graphons” or “w-random graphs” and are clearly exchangeable (permutation-invariant) over nodes." _
+- _"if all the variables relevant to tie-formation and node behavior are observed, the ordinary least-square (OLS) estimator provides an unbiased estimate (βˆOLS) of β"_
 
