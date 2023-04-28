@@ -5,6 +5,13 @@ editor_options:
   chunk_output_type: inline
 ---
 
+## Meeting 230427
+
+- ergms with weighted, compare years
+- trajectories through time of companies in the soy / risk space
+- diff-in-diff for the treatment of signing agreement. You need companies wihtout agreement to test before / after 
+- ergm term diff() commitment in company (1/0) - municipality normalized deforestation risk (0:1)
+
 ## Meeting 230425
 
 Next steps:

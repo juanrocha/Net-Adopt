@@ -1,0 +1,319 @@
+---
+title: "Bipartite"
+author: "Juan Rocha"
+output:
+    html_document:
+      theme:
+        bootswatch: cosmo
+        code_font:
+            google: Fira Code
+      df_print: paged
+      code_folding: hide
+      toc: true
+      toc_float:
+        collapsed: true
+        smooth_control: true
+      toc_depth: 3
+      fig_caption: true
+      highlight: pygments
+      self_contained: false
+      lib_dir: libs
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(fs)
+```
+This notebook perform some basic bipartite netowrk modeling on the exporting / importing companies layer in the data. `03-bipartite` replicates the idea but for municipalities / companies exporting.
+
+## Data
+
+Subnational soy exports data from Brazil based on the Trase dataset
+```{r}
+fls <- fs::dir_ls(path = "~/Documents/Projects/DATA/Trase/BRAZIL_SOY_2.6.0_pc/")
+
+fls |> str_subset(".csv")
+
+dat <- read_csv(file = str_subset(fls, ".csv")) |> 
+    janitor::clean_names()
+```
+
+
+```{r message = FALSE, warning = FALSE}
+library(ergm)
+library(ergm.count)
+library(ggnetwork)
+library(ggnewscale)
+library(tictoc)
+library(patchwork)
+```
+
+Now there is 2020 data on the lastest dataset
+
+```{r}
+net2018 <- dat |> 
+    filter(year == 2020) |> #filter(exporter == "DOMESTIC CONSUMPTION")
+    select(exporter, importer, soy_equivalent_tonnes) |> 
+    group_by(exporter, importer) |> 
+    summarize(soy = sum(soy_equivalent_tonnes)) |>
+    mutate(log_soy = log10(soy)) |> 
+    mutate(exporter = str_to_title(exporter) |> str_c("e", sep="_"),
+           importer = str_to_title(importer) |> str_c("i", sep="_")) |> 
+    #filter(exporter != importer) |> # there are 14 self-loops
+    network( matrix.type = "edgelist", ignore.eval = TRUE, bipartite = TRUE,
+            loops = FALSE)
+
+net2018
+```
+
+Calculate proportion of links with commitments: the following calculations derive the proportion per node with respect to all its connections, not the proportion of pair-wise links. That could be another avenue to model it, as link weight instead of node attribute. 
+
+Geography can also be included but not sure if country or municipality is best? Or a combination? Municipality for Brazil, country for importer company. The problem is if the same company exports from multiple places.
+
+
+```{r}
+exp_commit <- dat |> 
+    filter(year == 2020) |> 
+     mutate(exporter = str_to_title(exporter) |> str_c("e", sep="_"),
+           importer = str_to_title(importer) |> str_c("i", sep="_")) |> 
+    select(exporter, commitment = zero_deforestation_brazil_soy) |> 
+    mutate(commitment = case_when(
+        is.na(commitment) ~ "missing",
+        TRUE ~ commitment
+    )) |> 
+    group_by(exporter) |> 
+    add_count() |> # number of outlinks total
+    ungroup() |> group_by(exporter, commitment) |> 
+    add_count(name = "n_type") |> 
+    summarize(prop = n_type / n) |> unique() |> 
+    mutate(commitment = str_to_lower(commitment) |> 
+               str_replace_all(" ", "_")) |> 
+    pivot_wider(names_from = commitment, values_from = prop, values_fill = 0)
+
+exp_commit |> arrange(desc(company_commitment))
+```
+
+```{r}
+imp_commit <- dat |> 
+    filter(year == 2020) |> 
+     mutate(exporter = str_to_title(exporter) |> str_c("e", sep="_"),
+           importer = str_to_title(importer) |> str_c("i", sep="_")) |> 
+    select(importer, commitment = zero_deforestation_brazil_soy) |> 
+    mutate(commitment = case_when(
+        is.na(commitment) ~ "missing",
+        TRUE ~ commitment
+    )) |> 
+    group_by(importer) |> 
+    add_count() |> # number of outlinks total
+    ungroup() |> group_by(importer, commitment) |> 
+    add_count(name = "n_type") |> 
+    summarize(prop = n_type / n) |> unique() |> 
+    mutate(commitment = str_to_lower(commitment) |> 
+               str_replace_all(" ", "_")) |> 
+    pivot_wider(names_from = commitment, values_from = prop, values_fill = 0)
+
+imp_commit |> arrange(desc(company_commitment))
+```
+
+```{r}
+
+exp_commit <- exp_commit |> 
+    rename(node = exporter) |> 
+    select(-missing, -none)
+
+imp_commit <- imp_commit |> 
+    rename(node = importer) |> 
+    select(-missing, -none)
+
+df_commit <- full_join(exp_commit, imp_commit)
+
+df_commit <- df_commit |> ungroup() 
+
+# get the attributes table on the same order as nodes in the network
+df_attr <- tibble(
+    node = network.vertex.names(net2018)
+)
+
+df_attr <- left_join(df_attr, df_commit)
+
+## Add them as node covariates: updated for a bipartite undirected network
+net2018 %v% "soy_moratorium" <- df_attr$soy_moratorium
+net2018 %v% "company_commitment" <- df_attr$company_commitment
+net2018 %v% "degree" <- sna::degree(net2018, gmode = "graph")
+net2018 %v% "bet" <- sna::betweenness(net2018, gmode = "graph", rescale = TRUE)
+
+```
+
+```{r}
+a <- exp_commit |> 
+    ggplot(aes(company_commitment, soy_moratorium)) +
+    geom_point(alpha = 0.5) +
+    labs(title = "Exporting companies") +
+    theme_light()
+b <- imp_commit |> 
+    ggplot(aes(company_commitment, soy_moratorium)) +
+    geom_point(alpha = 0.5) +
+    labs(title = "Importing companies") +
+    theme_light()
+
+a+b
+```
+
+```{r}
+tbls <- dat |> 
+    select(exporter, year, zero_deforestation_brazil_soy) |> 
+    table()
+
+dat |> pull(zero_deforestation_brazil_soy) |> unique()
+
+tbls[,,] |> as_tibble() |> 
+    ggplot(aes(year, n)) + 
+    geom_line(aes(group = exporter), show.legend = FALSE) +
+    facet_wrap(~zero_deforestation_brazil_soy, ncol = 1, scales = "free_y")
+
+```
+
+
+
+```{r}
+ggplot(
+    ggnetwork(net2018, arrow.gap = 0.01), 
+    aes(x = x, y = y, xend = xend, yend = yend)) +
+    geom_edges(
+        aes(color = soy), size = 0.2,
+        arrow = arrow(length = unit(4, "pt"), type = "open")) +
+    scale_color_viridis_c(
+        direction = -1, option = "B", trans = "log1p", alpha = 0.4,
+        guide = guide_colorbar(title.position = "top")) +
+    new_scale_color() +
+    geom_nodes(aes(size = degree, color = company_commitment), 
+               alpha = 1) + 
+    scico::scale_color_scico(palette = "batlow", 
+               guide = guide_colorbar(title.position = "top")) +
+    # new_scale_color() +
+    # geom_nodes(aes(size = idegree, color = company_commitment), 
+    #            alpha = 0.75) + 
+    # scico::scale_color_scico(
+    #     palette = "batlow",
+    #     guide = guide_colorbar(title.position = "top")) +
+    scale_size(guide = guide_legend(title.position = "top")) +
+    theme_void() +
+    theme(legend.position = "bottom")
+        
+```
+
+
+### ERGMs bipartite
+
+```{r}
+f0 <- ergm(net2018~edges)
+
+summary(f0)
+```
+
+```{r}
+f1 <- ergm(
+    net2018 ~ edges + diff("company_commitment") + 
+        diff("soy_moratorium"))
+summary(f1)
+```
+
+```{r}
+f2 <- ergm(
+    net2018 ~ edges + diff("company_commitment") + 
+        diff("soy_moratorium") +
+        nodecov("company_commitment") + 
+        nodecov("soy_moratorium"))
+summary(f2)
+```
+```{r}
+f3 <- ergm(
+    net2018 ~ edges + b1cov("company_commitment") +
+        b2cov("company_commitment") +
+        b1cov("soy_moratorium") +
+        b2cov("soy_moratorium")
+)
+
+summary(f3)
+```
+
+```{r}
+#Crashes
+# tic()
+# f4 <- ergm(
+#     net2018 ~ nonzero + sum,
+#     response = "log_soy",
+#     reference = ~StdNormal)
+# toc()
+# summary(f4)
+```
+
+
+
+### Commitments
+
+```{r}
+exp_commit2 <- dat |> 
+    filter(year == 2018) |> 
+     mutate(exporter = str_to_title(exporter) |> str_c("e", sep="_"),
+           importer = str_to_title(importer) |> str_c("i", sep="_")) |> 
+    select(exporter, importer, commitment = zero_deforestation_brazil_soy) |> 
+    mutate(commitment = case_when(
+        is.na(commitment) ~ "missing",
+        TRUE ~ commitment
+    )) |> 
+    group_by(exporter) |> 
+    add_count() |> # number of outlinks total
+    ungroup() |> group_by(exporter, commitment) |> 
+    add_count(name = "n_type") |> 
+    summarize(prop = n_type / n) |> unique() |> 
+    mutate(commitment = str_to_lower(commitment) |> 
+               str_replace_all(" ", "_")) |> 
+    pivot_wider(names_from = commitment, values_from = prop, values_fill = 0)
+
+exp_commit2 |> arrange(desc(company_commitment))
+```
+
+```{r}
+imp_commit <- dat |> 
+    filter(year == 2018) |> 
+     mutate(exporter = str_to_title(exporter) |> str_c("e", sep="_"),
+           importer = str_to_title(importer) |> str_c("i", sep="_")) |> 
+    select(importer, commitment = zero_deforestation_brazil_soy) |> 
+    mutate(commitment = case_when(
+        is.na(commitment) ~ "missing",
+        TRUE ~ commitment
+    )) |> 
+    group_by(importer) |> 
+    add_count() |> # number of outlinks total
+    ungroup() |> group_by(importer, commitment) |> 
+    add_count(name = "n_type") |> 
+    summarize(prop = n_type / n) |> unique() |> 
+    mutate(commitment = str_to_lower(commitment) |> 
+               str_replace_all(" ", "_")) |> 
+    pivot_wider(names_from = commitment, values_from = prop, values_fill = 0)
+
+imp_commit |> arrange(desc(company_commitment))
+```
+
+
+There are multiple transactions between pairs of companies (exporter, importer). Despite they are the same companies, not all transactions are labelled under the same certification scheme. I cannot aggregate per dyad because we introduce errors on the commitments variable.
+
+```{r}
+dat |>
+    filter(year == 2018) |>
+    group_by(exporter,importer) |>
+    add_count(name = "N") |> 
+    filter(zero_deforestation_brazil_soy == "COMPANY COMMITMENT") |>
+    summarize(n = n(), prop = n/N) |> 
+    ggplot(aes(prop)) + geom_density() + geom_vline(xintercept = 1, color = "orange")
+```
+
+
+
+Questions for Trase ppl:
+
+- Who does the zero deforestation commitment? The exporting or importing company?: It seems it is the exporting company because they are the ones actually closer to the field, but the network graph does not support that.
+- Domestic consumption exporter/importer? Any data on the companies?
+- Why is the commitments variable an attribute of each transaction, not of the company?
+- node attribute country?

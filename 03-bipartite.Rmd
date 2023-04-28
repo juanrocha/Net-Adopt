@@ -1,0 +1,443 @@
+---
+title: "Exploring Brazil data"
+author: "Juan Rocha"
+date: "May 2022"
+output:
+    html_document:
+      theme:
+        bootswatch: cosmo
+        code_font:
+            google: Fira Code
+      df_print: paged
+      code_folding: hide
+      toc: true
+      toc_float:
+        collapsed: true
+        smooth_control: true
+      toc_depth: 3
+      fig_caption: true
+      highlight: pygments
+      self_contained: false
+      lib_dir: libs
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(fs)
+library(tictoc)
+```
+
+Municipality and exporting companies networks.
+
+TO DO:
+
+- Commitment: use only company commitments.
+- linear regressions
+
+## Data
+
+Previous version of the analysis used the 2.5v of the data; now updating to 2.6 which includes up to year 2020. There are some naming conventions that have changed.
+
+```{r}
+fls <- fs::dir_ls(path = "~/Documents/Projects/DATA/Trase/BRAZIL_SOY_2.6.0_pc/")
+fls |> str_subset(".csv")
+dat <- read_csv(file = str_subset(fls, ".csv")) |> 
+    janitor::clean_names()
+```
+
+
+```{r message = FALSE, warning = FALSE}
+library(ergm)
+library(ergm.count)
+library(ggnetwork)
+library(ggnewscale)
+library(tictoc)
+library(patchwork)
+```
+
+For the analysis I will keep `biome` because it seems to influence whether there is a commitment or not, or the type of commitment. Zero deforestation is for Amazon biome only. 
+
+```{r}
+dat |> 
+    select( municipality = municipality_of_production, exporter, year, land_use_ha,
+            soy_deforestation_exposure, soy_deforestation_risk,
+            soy_equivalent_tonnes, 
+            co2_gross_emissions_soy_deforestation_5_year_total_exposure,
+            co2_net_emissions_soy_deforestation_5_year_total_exposure,
+            biome) |> 
+    skimr::skim()
+```
+
+Drop deforestation risk and CO~2 emissions because of low completeness rates (~30%). Update: completion rates are 58% with new dataset. 
+
+Remember, there are more than row per municipality / company because the flow can splits afterwards to different importer company and importer country. 
+
+```{r}
+dat |> 
+    filter(year == 2020, exporter == "COFCO INTERNATIONAL GRAINS LTDA.") |> 
+    select(importer, country_of_first_import,soy_deforestation_risk, soy_deforestation_exposure, zero_deforestation_brazil_soy)
+```
+
+How do we aggregate on the bipartite network? So if a company extracts soy from the same municipality, the deforestation risk and exposure does not depend on company nor municipality. It seems to be influenced by the country of first import.
+
+```{r}
+dat |> 
+    ggplot(aes(soy_deforestation_exposure, soy_deforestation_risk)) +
+    geom_point(aes(color = country_of_first_import), show.legend = FALSE) +
+    facet_wrap(~year)
+```
+
+Interesting, there is only complete data from 2013. According to zu Ermgassen et al 2020, soy deforestation risk is in ha / 1000 tons. 
+
+```{r}
+dat |> filter(year >= 2013) |> skimr::skim()
+```
+
+Working with data from 2013, we get over 90% completeness on covariates in the network.
+Just out of curiosity, how much is domestic consumption versus export?
+
+```{r}
+dat |> 
+    mutate(cons = ifelse(exporter == "DOMESTIC CONSUMPTION", "domestic", "foreign")) |> 
+   # pull(cons) |> table()
+    group_by(cons) |> 
+    summarize(soy = sum(soy_equivalent_tonnes)) |> 
+    mutate(prop = soy / sum(soy))
+
+```
+
+~27% of soy produced is consumed in Brazil. Not a neglegible part but no company tracked.
+
+```{r}
+dat |> 
+    mutate(cons = ifelse(exporter == "DOMESTIC CONSUMPTION", "domestic", "foreign")) |> 
+    group_by(cons) |> 
+    summarize(mean_risk = weighted.mean(soy_deforestation_risk, w = soy_equivalent_tonnes, 
+                                        na.rm = TRUE))
+```
+
+## Network set up
+
+Start with one year / network, then expand. Let's assume networks do not have to be the same size for modeling.
+
+```{r}
+net <- dat |> filter(year >= 2013) |> 
+    select(municipality = municipality_of_production, exporter, 
+           soy_equivalent_tonnes, soy_deforestation_risk, year) |> 
+    ## exclude undesirable obs before any calculation
+    filter(municipality != "UNKNOWN" , exporter != "UNKNOWN") |> 
+    filter(exporter != "DOMESTIC CONSUMPTION") |> 
+    group_by(municipality, exporter, year) |> 
+    # ungroup() |> skimr::skim()
+    summarize(
+        soy_tonnes = sum(soy_equivalent_tonnes, na.rm = TRUE), 
+        mean_risk = weighted.mean(soy_deforestation_risk, w = soy_equivalent_tonnes,
+                                  na.rm = TRUE)) |> 
+    ungroup() |> #select(-year) |> #slice(517)
+    split(~year) |> 
+    map(.f = network, matrix.type = "edgelist", ignore.eval = TRUE, bipartite = TRUE,
+            loops = FALSE)
+# 
+#     network( matrix.type = "edgelist", ignore.eval = TRUE, bipartite = TRUE,
+#             loops = FALSE)
+net
+```
+
+Now the `net` object is a list of networks. They have been constructed departing from the edge lists, so only links that exist are included. That means that if new companies appear or disappear in time, the matrices do not have the same dimensions. 
+
+Following the logic of the `02-bipartite.Rmd` file, here I calculate the proportion of links per node that are under commitment, and the average deforestation mean risk per actor. The latter is a variable that exist per link, so it can be also modeled as link attribute instead of node attribute. 
+
+```{r}
+# get the attributes table on the same order as nodes in the network
+df_attr <- list()
+df_attr <- map(net, function(x) {y <- tibble(node = network.vertex.names(x)); return(y)})
+
+## municipalities attributes
+df_mun <- dat |> filter(year >= 2013) |> 
+    select(municipality = municipality_of_production, exporter,
+           soy_equivalent_tonnes, soy_deforestation_risk, year) |> 
+    filter(municipality != "UNKNOWN" , exporter != "UNKNOWN") |> 
+    filter(exporter != "DOMESTIC CONSUMPTION") |> 
+    group_by(municipality, year) |> 
+    summarize(
+        soy_tonnes_log = sum(soy_equivalent_tonnes, na.rm = TRUE) |> log10(), 
+        mean_risk = weighted.mean(soy_deforestation_risk, w = soy_equivalent_tonnes,
+                                  na.rm = TRUE) 
+        ) |> 
+    split(~year)
+## companies attributes
+df_comp <- dat |> filter(year >= 2013) |> 
+    select(exporter, municipality = municipality_of_production,
+           soy_equivalent_tonnes, soy_deforestation_risk, year) |> 
+     filter(municipality != "UNKNOWN" , exporter != "UNKNOWN") |> 
+    filter(exporter != "DOMESTIC CONSUMPTION") |> 
+    group_by(exporter, year) |> 
+    summarize(
+        soy_tonnes_log = sum(soy_equivalent_tonnes, na.rm = TRUE) |> log10(), 
+        mean_risk = weighted.mean(soy_deforestation_risk, w = soy_equivalent_tonnes,
+                                  na.rm = TRUE) 
+        ) |> 
+    split(~year)
+
+## commitments dataset with both companies and municipalities
+df_commit <- dat |> filter(year >= 2013) |> 
+    select(exporter, municipality =  municipality_of_production,
+           commitment = zero_deforestation_brazil_soy,
+           soy_equivalent_tonnes, year) |> 
+    filter(municipality != "UNKNOWN" , exporter != "UNKNOWN") |> 
+    filter(exporter != "DOMESTIC CONSUMPTION") |> 
+    mutate(commitment = case_when(
+        is.na(commitment) ~ "missing",
+        TRUE ~ commitment
+    )) 
+
+df_commit |> pull(commitment) |> unique()
+```
+
+- `biome` is difficult to model because it is not unique for each municipality. Some municipalities have multiple biomes and trase seems to know where it comes from to calculate risks. 
+
+- Idea: weight risk by soy in tonnage [done]
+
+```{r}
+commit_towns <- df_commit |> 
+    group_by(exporter, municipality, year, commitment) |> 
+    summarise(soy_tonnes = sum(soy_equivalent_tonnes)) |> # this is the total soy per dyad
+    select(-exporter) |> 
+    group_by(municipality, commitment, year) |> 
+    summarize(total_soy = sum(soy_tonnes)) |> # this is total soy per municipality
+    ungroup() |> group_by(municipality, year) |> 
+    mutate(prop_soy = total_soy / sum(total_soy) ) |> #pull(prop_soy) |> range()
+    ungroup() |> 
+    pivot_wider(id_cols = c(municipality, year), 
+                names_from = commitment, values_from = prop_soy) |> 
+    rowwise() |> 
+    mutate(prop_commit = sum(`COMPANY COMMITMENT`, `SOY MORATORIUM`, na.rm = TRUE)) |> 
+    ungroup() |> 
+    split(~year)
+
+commit_companies <- df_commit |> 
+    group_by(exporter, municipality, year, commitment) |> 
+    summarise(soy_tonnes = sum(soy_equivalent_tonnes)) |> # this is the total soy per dyad
+    ungroup() |> 
+    select(-municipality) |> 
+    group_by(exporter, commitment, year) |> 
+    summarize(total_soy = sum(soy_tonnes)) |> 
+    ungroup() |> group_by(exporter, year) |> 
+    mutate(prop_soy = total_soy / sum(total_soy) ) |> 
+    ungroup() |> 
+    pivot_wider(id_cols = c(exporter, year),
+                names_from = commitment, values_from = prop_soy)|>
+    rowwise() |> 
+    mutate(prop_commit = sum(`COMPANY COMMITMENT`, `SOY MORATORIUM`, na.rm = TRUE)) |> 
+    ungroup() |> 
+    split(~year)
+
+```
+
+Stitch attributes together:
+
+```{r}
+df_comp <- map2(
+    .x = df_comp,
+    .y = commit_companies,
+    .f = function(x,y) left_join(x,y) |> 
+        mutate(prop_commit = case_when(
+        is.na(prop_commit) ~ 0, TRUE ~ prop_commit))
+)
+
+df_mun <- map2(
+    .x = df_mun,
+    .y = commit_towns,
+    .f = function(x,y) left_join(x,y) |> 
+        rowwise() |> 
+        mutate(prop_commit = sum(`COMPANY COMMITMENT`, `SOY MORATORIUM`, na.rm = TRUE)) |>
+        mutate(prop_commit = case_when(is.na(prop_commit) ~ 0, TRUE ~ prop_commit))
+)
+
+names(df_mun[[1]]) %in% names(df_comp[[1]])
+
+df_attr <- pmap(
+    .l = list(df_attr, df_mun, df_comp),
+    .f = function(x,y,z){
+        x |> left_join(
+            bind_rows(rename(y, node = municipality),
+                      rename(z, node = exporter))
+        )
+    }
+)
+
+df_attr <- map(df_attr, function(x) mutate(x, risk_scaled = mean_risk / (max(mean_risk))))
+
+net <- map2(.x = net, .y = df_attr,
+     .f = function(x,y) {x %v% "soy" <- y$soy_tonnes_log; return(x)})
+net <- map2(.x = net, .y = df_attr,
+     .f = function(x,y) {x %v% "risk" <- y$mean_risk; return(x)})
+net <- map2(.x = net, .y = df_attr,
+     .f = function(x,y) {x %v% "prop_commit" <- y$prop_commit; return(x)})
+net <- map2(.x = net, .y = df_attr,
+     .f = function(x,y) {x %v% "risk_scaled" <- y$risk_scaled; return(x)})
+```
+
+## Linear regressions
+
+```{r}
+df_comp |> 
+    bind_rows() |> 
+    ggplot(aes(soy_tonnes_log, log1p(mean_risk), group = exporter)) +
+    geom_point(aes(color = prop_commit > 0)) +
+    ggnewscale::new_scale_color() +
+    #geom_line(aes(color = year), alpha = 0.5, linewidth = 0.4) +
+    #scale_color_viridis_c() +
+    facet_wrap(~year) +
+    theme_light(base_size = 6)
+
+
+df_comp |> 
+    bind_rows() |> 
+    ggplot(aes(soy_tonnes_log, log1p(mean_risk), group = exporter)) +
+    geom_point(aes(color = !is.na(`COMPANY COMMITMENT`))) +
+    ggnewscale::new_scale_color() +
+    #geom_line(aes(color = year), alpha = 0.5, linewidth = 0.4) +
+    #scale_color_viridis_c() +
+    facet_wrap(~year) +
+    theme_light(base_size = 6)
+```
+
+```{r}
+df_comp |> 
+    bind_rows() |> 
+    mutate(commit = prop_commit > 0) |> 
+    #group_by(year) |> summarize(com = sum(commit)) # test: same num of commited companies
+    # group_by(exporter) |> 
+    # mutate(same = all(commit == FALSE) | all(commit == TRUE)) |> 
+    # filter(same != TRUE) |> 
+    ggplot(aes(year, log1p(mean_risk), group = exporter)) +
+    geom_line(aes(color = commit), alpha = 0.4) +
+    scale_color_brewer(palette = "Set2")
+
+# num of companies commited per year
+df_comp |> 
+    bind_rows() |> 
+    mutate(commit = prop_commit > 0) |> 
+    group_by(year) |> summarize(com = sum(commit)) 
+```
+
+```{r}
+dat |> 
+    filter(zero_deforestation_brazil_soy == "SOY MORATORIUM" | 
+               zero_deforestation_brazil_soy == "COMPANY COMMITMENT") |> 
+    filter(year >= 2013) |> 
+    pull(exporter) |> unique()
+```
+
+
+```{r}
+# glm(prop_commit ~ mean_risk + soy_tonnes_log , family = "binomial",
+#         data = df_comp[[8]]) |> 
+#     summary()
+# 
+# lm(links ~ mean_risk + soy_tonnes_log + prop_commit, data = df_comp[[8]]) |> 
+#     summary()
+# 
+# lm(prop_commit ~ mean_risk + soy_tonnes_log + links, data = df_mun) |> 
+#     summary()
+# 
+# lm(links ~ mean_risk + soy_tonnes_log + prop_commit, data = df_mun) |> 
+#     summary()
+```
+
+## Bipartite ERGMs
+
+```{r}
+f0 <- ergm(net[[8]] ~ edges)
+summary(f0)
+```
+
+```{r}
+f1 <- ergm(net[[8]] ~ edges + nodecov("risk") + nodecov("soy"))
+summary(f1)
+```
+
+```{r}
+f2 <- ergm(net[[8]] ~ edges + nodecov("risk") + nodecov("soy") + nodecov("prop_commit"))
+summary(f2)
+```
+
+```{r}
+f3 <- ergm(net[[8]] ~ edges + b2cov("prop_commit")+ b2cov("risk") + b2cov("soy") )
+summary(f3)
+```
+
+
+```{r}
+f4 <- ergm(net[[8]] ~ edges + b1cov("prop_commit")+ b1cov("risk") + b1cov("soy")  )
+summary(f4)
+```
+
+```{r}
+f5 <- ergm(net[[8]] ~ edges + b1cov("prop_commit")+ b1cov("risk") + b1cov("soy")  + b2cov("prop_commit")+ b2cov("risk") + b2cov("soy")+ 
+               edgecov(net[[8]],"mean_risk") )
+summary(f5)
+```
+
+```{r}
+tic()
+fits <- map(
+    net, 
+    function(x) ergm(x ~ edges + b1cov("prop_commit")+ b1cov("risk") + 
+        b1cov("soy")  + b2cov("prop_commit")+ b2cov("risk") + b2cov("soy") 
+        #edgecov(x, "mean_risk")
+        ),
+    .progress = TRUE)
+toc() # 281s
+```
+
+```{r}
+map(fits, summary)
+```
+
+```{r}
+out <- map(fits, broom::tidy) 
+out <- map2(out, names(fits), function(x,y) {x$year <- y; return(x)})
+out <- bind_rows(out)
+out |> 
+    mutate(p_value = case_when(
+        p.value < 0.01 ~ "< 0.01",
+        p.value >=0.01 & p.value < 0.05 ~ "< 0.05",
+        p.value >= 0.05 ~ "> 0.05"
+    )) |> 
+    filter(term != "edges") |> 
+    ggplot(aes(estimate, term)) +
+    geom_point(aes(color = p_value, shape = p_value)) +
+    geom_errorbarh(aes(xmin = estimate - std.error, xmax = estimate + std.error, 
+                       color = p_value), height = 0.1) +
+    scale_color_brewer(palette = "Set1") +
+    facet_wrap(~year)
+
+# ggsave(
+#     filename = "ergms_bipartite.png", path = "figures/", device = "png",
+#     plot = last_plot(), width = 6, height = 4, dpi = 400
+# )
+```
+
+
+## Old code
+
+```{r}
+ # dat |> 
+ #    map(function (x) select(x, municipality, exporter, soy = soy_equivalent_tonnes)) |>
+ #    map(function(x) group_by(x, municipality, exporter) |>
+ #            summarize(soy = sum(soy, na.rm = TRUE)) |> 
+ #            ungroup()) |> 
+ #    map(function(x) mutate(x, log_soy = log10(soy)) |> select(-soy)) |> 
+ #    map(function(x) pivot_wider(x, names_from = exporter, values_from = log_soy, values_fill = 0)) 
+ #    
+fls <- fs::dir_ls(path = "~/Documents/Projects/DATA/Trase/COLOMBIA_COFFEE_1.0.3_pc/")
+fls |> str_subset(".csv")
+col <- read_csv(file = str_subset(fls, ".csv")) |> 
+    janitor::clean_names()
+
+col |> names()
+```
+
