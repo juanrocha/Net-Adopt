@@ -15,7 +15,9 @@ dat
 # Network matrix of exporters (A) and municipalities (B) for 2020 
 # Network matrix of exporters and municipalities for 2018
 
-dat |> 
+# J240404: actors need to be the same across years
+
+m2020 <- dat |> 
     filter(year == 2020) |> 
     select(municipality_of_production, exporter) |> 
     arrange(exporter) |> 
@@ -23,8 +25,40 @@ dat |>
     unique() |> 
     add_column(n = 1) |> 
     pivot_wider(names_from = exporter, values_from = n, values_fill = 0) |> 
+    arrange(municipality_of_production) #
+
+m2018 <- dat |> 
+    filter(year == 2018) |> 
+    select(municipality_of_production, exporter) |> 
+    arrange(exporter) |> 
+    filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+    unique() |> 
+    add_column(n = 1) |> 
+    filter(exporter %in% names(m2020)) |> 
+    pivot_wider(names_from = exporter, values_from = n, values_fill = 0) |> 
     arrange(municipality_of_production) |> 
-    select(-municipality_of_production) |> 
+    filter(municipality_of_production %in% m2020$municipality_of_production)  
+
+#now run again m2020 filtering for the same:
+
+m2020 <- dat |> 
+    filter(year == 2020) |> 
+    select(municipality_of_production, exporter) |> 
+    arrange(exporter) |> 
+    filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+    unique() |> 
+    add_column(n = 1) |> 
+    filter(exporter %in% names(m2018)) |> 
+    pivot_wider(names_from = exporter, values_from = n, values_fill = 0) |> 
+    arrange(municipality_of_production) |> 
+    filter(municipality_of_production %in% m2018$municipality_of_production)
+
+## run once more m2018 to make sure they have the same dims
+m2018 |>
+    select(-municipality_of_production) |>
+    write_tsv(file = "data/bipartie-municipality-exporter-2018.txt", col_names = FALSE)
+m2020 |>
+    select(-municipality_of_production) |>
     write_tsv(file = "data/bipartie-municipality-exporter-2020.txt", col_names = FALSE)
 
 # Attribute file for binary attributes for A (see example attached)
@@ -40,6 +74,7 @@ dat |>
  
 exporter_attributes <- dat |> filter(year == 2020) |> arrange(exporter) |> 
     filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+    filter(exporter %in% names(m2020)) |> 
     select(exporter, zd = zero_deforestation_brazil_soy) |> 
     unique() |> #pull(zero_deforestation_brazil_soy) |> table()
     mutate(commitment_2020 = case_when(
