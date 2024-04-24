@@ -117,6 +117,28 @@ dat |>
                                         na.rm = TRUE))
 ```
 
+Figure requested by Angela: plot deforestation risk, amount of soy and ZDR sign / not.
+ 
+```{r}
+library(naniar)
+dat |> 
+    filter(year >= 2013) |> 
+    ggplot(aes(soy_deforestation_risk, soy_equivalent_tonnes)) +
+    geom_miss_point(aes(color = zero_deforestation_brazil_soy), alpha = 0.4) +
+    geom_smooth(color ="orange", linewidth = 1) +
+    facet_grid(year~zero_deforestation_brazil_soy) +
+    scale_x_continuous(trans = "log1p") +
+    theme_light(base_size = 6)
+
+ggsave(
+    plot = last_plot(),
+    filename = "Risk_vs_soy_in_tons.png", path = "figures/", device = "png",
+    width = 6, height = 5, bg = "white", dpi = 500
+)
+
+```
+
+
 ## Network set up
 
 Start with one year / network, then expand. Let's assume networks do not have to be the same size for modeling.

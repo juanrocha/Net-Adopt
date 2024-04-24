@@ -5,6 +5,10 @@ editor_options:
   chunk_output_type: inline
 ---
 
+## Meeting 240404
+
+- Viaje de Angela sirvio para fortalecer contactos con Selva y Smithsonian.
+
 ## Meeting 230427
 
 - ergms with weighted, compare years

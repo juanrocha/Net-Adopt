@@ -74,7 +74,7 @@ dat |>
  
 exporter_attributes <- dat |> filter(year == 2020) |> arrange(exporter) |> 
     filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
-    filter(exporter %in% names(m2020)) |> 
+    #filter(exporter %in% names(m2020)) |> 
     select(exporter, zd = zero_deforestation_brazil_soy) |> 
     unique() |> #pull(zero_deforestation_brazil_soy) |> table()
     mutate(commitment_2020 = case_when(
