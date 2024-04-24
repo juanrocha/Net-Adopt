@@ -74,7 +74,7 @@ dat |>
  
 exporter_attributes <- dat |> filter(year == 2020) |> arrange(exporter) |> 
     filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
-    #filter(exporter %in% names(m2020)) |> 
+    filter(exporter %in% names(m2020)) |> 
     select(exporter, zd = zero_deforestation_brazil_soy) |> 
     unique() |> #pull(zero_deforestation_brazil_soy) |> table()
     mutate(commitment_2020 = case_when(
@@ -90,6 +90,7 @@ exporter_attributes <- exporter_attributes |>
     left_join(
         dat |> filter(year == 2019) |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+            filter(exporter %in% names(m2020)) |> 
             select(exporter, zd = zero_deforestation_brazil_soy) |> 
             unique() |> #pull(zero_deforestation_brazil_soy) |> table()
             mutate(commitment_2019 = case_when(
@@ -102,6 +103,7 @@ exporter_attributes <- exporter_attributes |>
     left_join(
         dat |> filter(year == 2018) |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+            filter(exporter %in% names(m2020)) |> 
             select(exporter, zd = zero_deforestation_brazil_soy) |> 
             unique() |> #pull(zero_deforestation_brazil_soy) |> table()
             mutate(commitment_2018 = case_when(
@@ -114,6 +116,7 @@ exporter_attributes <- exporter_attributes |>
     left_join(
         dat |> filter(year == 2017) |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+            filter(exporter %in% names(m2020)) |> 
             select(exporter, zd = zero_deforestation_brazil_soy) |> 
             unique() |> #pull(zero_deforestation_brazil_soy) |> table()
             mutate(commitment_2017 = case_when(
@@ -128,6 +131,7 @@ exporter_attributes <- exporter_attributes |>
     left_join(
         dat |> filter(year == 2020) |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+            filter(exporter %in% names(m2020)) |> 
             group_by(exporter) |> 
             summarize(
                 soy_traded = sum(soy_equivalent_tonnes, na.rm = TRUE),
@@ -137,12 +141,14 @@ exporter_attributes <- exporter_attributes |>
     left_join(
         dat |> filter(year == 2020) |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+            filter(exporter %in% names(m2020)) |> 
             select(exporter, importer) |> unique() |> 
             group_by(exporter) |> summarize(buyers=n())
     ) |> 
     left_join(
         dat |> filter(year == 2020) |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+            filter(exporter %in% names(m2020)) |> 
             select(exporter, country_of_first_import) |> unique() |> 
             group_by(exporter) |> summarize(countries=n())
     )
@@ -153,6 +159,7 @@ write_tsv(exporter_attributes, file = "data/attributes-exporter-2020.txt", col_n
 
 dat |> filter(year == 2020) |> arrange(municipality_of_production) |> 
     filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
+    filter(municipality_of_production %in% m2020$municipality_of_production) |> 
     group_by(municipality_of_production) |> 
     summarize(
         soy_deforestation = sum(soy_deforestation_exposure, na.rm = TRUE),
