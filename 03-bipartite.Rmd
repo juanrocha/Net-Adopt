@@ -88,7 +88,7 @@ dat |>
     facet_wrap(~year)
 ```
 
-Interesting, there is only complete data from 2013. According to zu Ermgassen et al 2020, soy deforestation risk is in ha / 1000 tons. 
+Interesting, there is only complete data from 2013. According to zu Ermgassen et al 2020, soy deforestation risk is in *ha / 1000 tons*. 
 
 ```{r}
 dat |> filter(year >= 2013) |> skimr::skim()
@@ -128,13 +128,91 @@ dat |>
     geom_smooth(color ="orange", linewidth = 1) +
     facet_grid(year~zero_deforestation_brazil_soy) +
     scale_x_continuous(trans = "log1p") +
+    scale_y_continuous(trans = "log1p") +
     theme_light(base_size = 6)
 
-ggsave(
-    plot = last_plot(),
-    filename = "Risk_vs_soy_in_tons.png", path = "figures/", device = "png",
-    width = 6, height = 5, bg = "white", dpi = 500
-)
+# ggsave(
+#     plot = last_plot(),
+#     filename = "Risk_vs_soy_in_tons.png", path = "figures/", device = "png",
+#     width = 6, height = 5, bg = "white", dpi = 500
+# )
+
+```
+
+
+## Brazil map for normalization
+
+```{r}
+library(sf)
+bzl <- sf::read_sf(
+    "~/Documents/Projects/DATA/GADM_maps/brazil/gadm41_BRA_shp/gadm41_BRA_2.shp")
+tic()
+bzl <- bzl |> 
+    mutate(area_m2 = st_area(geometry)) |> 
+    mutate(area_ha = area_m2 / 10000)
+toc() #31s
+```
+
+
+```{r}
+bzl <- bzl |> 
+    as_tibble() |> 
+    select(name = NAME_2, area_ha) |> 
+    mutate(name = stringi::stri_trans_general(name, id = "latin-ascii")) |> 
+    mutate(name = str_to_upper(name)) 
+
+sum((dat$municipality_of_production |> unique()) %in% bzl$name)
+# 2412 municipalities matched out of 2431
+unique(dat$municipality_of_production)[!unique(dat$municipality_of_production) %in% bzl$name] |> sort()
+# Only 19 municipalities missing
+bzl$name[!bzl$name %in% unique(dat$municipality_of_production) ]
+
+# modify the names in bzl so they match the ones on trase data
+# or better, modify trase so it follows official names, most of it are mispellings in portuguese
+# bzl |> 
+#     arrange(name) |> 
+#     filter(str_detect(name, "MOGI"))
+
+dat <- dat |> 
+    mutate(municipality_of_production = 
+        case_when(
+            municipality_of_production == "CORONEL VIVID" ~ "CORONEL VIVIDA",
+            municipality_of_production == "COUTO DE MAGALHAES" ~ "COUTO DE MAGALHAES DE MINAS",
+            municipality_of_production == "ELDORADO DO S" ~ "ELDORADO DO SUL",
+            municipality_of_production == "FAXINAL DOS G" ~ "FAXINAL DOS GUEDES",
+            municipality_of_production == "FLORINIA" ~ "FLORANIA",
+            municipality_of_production =="FORTALEZA DO TABOCAO" ~ "TABOCAO",
+            municipality_of_production == "LIMEIRA DO OE"~ "LIMEIRA DO OESTE",
+            municipality_of_production =="MOGI-MIRIM"~ "MOGI MIRIM",
+            municipality_of_production =="MUQUEM DE SAO FRANCISCO"~ "MUQUEM DO SAO FRANCISCO",
+            municipality_of_production =="PATOS DE MINA"~ "PATOS DE MINAS",
+            municipality_of_production =="PORTO NACIONA"~ "PORTO NACIONAL",
+            municipality_of_production =="POXOREO"~ "POXOREU",
+            municipality_of_production =="SANTANA DO LIVRAMENTO" ~ "SANT'ANA DO LIVRAMENTO",
+            municipality_of_production =="SAO LUIS DO PARAITINGA" ~ "SAO LUIZ DO PARAITINGA",
+            municipality_of_production =="SAO MIGUEL D OESTE"~ "SAO MIGUEL DO OESTE",
+            municipality_of_production == "SAO THOME DAS LETRAS"~ "SAO TOME DAS LETRAS",
+            municipality_of_production =="SAO VALERIO DA NATIVIDADE" ~ "SAO VALERIO", #?
+            municipality_of_production == "VILA BELA SANTISSIMA TRINDADE"~ "VILA BELA DA SANTISSIMA TRINDADE",
+            .default = municipality_of_production
+        )
+    )
+
+# join the ones that matches
+towns <- dat |> select(municipality_of_production) |> unique()
+
+
+
+towns <- towns |> 
+    left_join(bzl, by = c("municipality_of_production" = "name"))
+
+towns |> 
+    filter(is.na(area_ha)) |> 
+    arrange(municipality_of_production)
+
+# it works, all towns have area in hectares
+
+towns
 
 ```
 
@@ -146,16 +224,18 @@ Start with one year / network, then expand. Let's assume networks do not have to
 ```{r}
 net <- dat |> filter(year >= 2013) |> 
     select(municipality = municipality_of_production, exporter, 
-           soy_equivalent_tonnes, soy_deforestation_risk, year) |> 
+           soy_equivalent_tonnes, soy_deforestation_risk, year, biome) |> 
     ## exclude undesirable obs before any calculation
     filter(municipality != "UNKNOWN" , exporter != "UNKNOWN") |> 
     filter(exporter != "DOMESTIC CONSUMPTION") |> 
+    mutate(cerrado = case_when(biome == "CERRADO" ~ TRUE, .default = FALSE)) |> 
     group_by(municipality, exporter, year) |> 
     # ungroup() |> skimr::skim()
     summarize(
         soy_tonnes = sum(soy_equivalent_tonnes, na.rm = TRUE), 
         mean_risk = weighted.mean(soy_deforestation_risk, w = soy_equivalent_tonnes,
-                                  na.rm = TRUE)) |> 
+                                  na.rm = TRUE),
+        any_cerrado = sum(cerrado)) |> 
     ungroup() |> #select(-year) |> #slice(517)
     split(~year) |> 
     map(.f = network, matrix.type = "edgelist", ignore.eval = TRUE, bipartite = TRUE,
@@ -176,29 +256,51 @@ df_attr <- list()
 df_attr <- map(net, function(x) {y <- tibble(node = network.vertex.names(x)); return(y)})
 
 ## municipalities attributes
+tic()
 df_mun <- dat |> filter(year >= 2013) |> 
     select(municipality = municipality_of_production, exporter,
-           soy_equivalent_tonnes, soy_deforestation_risk, year) |> 
+           soy_equivalent_tonnes, soy_deforestation_risk, year, biome) |> 
     filter(municipality != "UNKNOWN" , exporter != "UNKNOWN") |> 
     filter(exporter != "DOMESTIC CONSUMPTION") |> 
+    mutate(cerrado = case_when(biome == "CERRADO" ~ TRUE, .default = FALSE)) |> 
     group_by(municipality, year) |> 
     summarize(
-        soy_tonnes_log = sum(soy_equivalent_tonnes, na.rm = TRUE) |> log10(), 
+        soy_tonnes = sum(soy_equivalent_tonnes, na.rm = TRUE),
+        soy_tonnes_log = log10(soy_tonnes), 
         mean_risk = weighted.mean(soy_deforestation_risk, w = soy_equivalent_tonnes,
-                                  na.rm = TRUE) 
-        ) |> 
+                                  na.rm = TRUE),
+        sum_risk = sum(soy_deforestation_risk, na.rm = TRUE),
+        # now as sum of links to cerrado, it can be soy in tonnes from cerrado as well,
+        # or the proportion
+        cerrado = sum(cerrado, na.rm = TRUE)
+    ) |> 
+    # move this below, do the risk / area at the end to avoid duplication of rows
+    left_join(
+        # there are several municipalities with the same name but different areas
+        towns |> group_by(municipality_of_production) |>
+            summarize(area_ha = max(area_ha)) |>
+            ungroup() |> 
+            rename(municipality = municipality_of_production)
+    ) |>
+    mutate(norm_risk = sum_risk / area_ha) |> 
     split(~year)
+toc() #14.5
+
+
 ## companies attributes
 df_comp <- dat |> filter(year >= 2013) |> 
     select(exporter, municipality = municipality_of_production,
-           soy_equivalent_tonnes, soy_deforestation_risk, year) |> 
+           soy_equivalent_tonnes, soy_deforestation_risk, year, biome) |> 
      filter(municipality != "UNKNOWN" , exporter != "UNKNOWN") |> 
     filter(exporter != "DOMESTIC CONSUMPTION") |> 
+    mutate(cerrado = case_when(biome == "CERRADO" ~ TRUE, .default = FALSE)) |> 
     group_by(exporter, year) |> 
     summarize(
         soy_tonnes_log = sum(soy_equivalent_tonnes, na.rm = TRUE) |> log10(), 
         mean_risk = weighted.mean(soy_deforestation_risk, w = soy_equivalent_tonnes,
-                                  na.rm = TRUE) 
+                                  na.rm = TRUE) ,
+        sum_risk = sum(soy_deforestation_risk, na.rm = TRUE),
+        cerrado = sum(cerrado, na.rm = TRUE)
         ) |> 
     split(~year)
 
@@ -294,11 +396,11 @@ df_attr <- map(df_attr, function(x) mutate(x, risk_scaled = mean_risk / (max(mea
 net <- map2(.x = net, .y = df_attr,
      .f = function(x,y) {x %v% "soy" <- y$soy_tonnes_log; return(x)})
 net <- map2(.x = net, .y = df_attr,
-     .f = function(x,y) {x %v% "risk" <- y$mean_risk; return(x)})
+     .f = function(x,y) {x %v% "risk" <- y$sum_risk; return(x)})
 net <- map2(.x = net, .y = df_attr,
      .f = function(x,y) {x %v% "prop_commit" <- y$prop_commit; return(x)})
 net <- map2(.x = net, .y = df_attr,
-     .f = function(x,y) {x %v% "risk_scaled" <- y$risk_scaled; return(x)})
+     .f = function(x,y) {x %v% "risk_norm" <- as.numeric(y$norm_risk); return(x)})
 ```
 
 ## Linear regressions
@@ -393,7 +495,9 @@ summary(f3)
 
 
 ```{r}
-f4 <- ergm(net[[8]] ~ edges + b1cov("prop_commit")+ b1cov("risk") + b1cov("soy")  )
+tic()
+f4 <- ergm(net[[8]] ~ edges + b1cov("prop_commit") * b1cov("risk") + b1cov("soy") + b2cov("prop_commit") * b2cov("risk") + b2cov("soy") )
+toc()
 summary(f4)
 ```
 
@@ -407,12 +511,12 @@ summary(f5)
 tic()
 fits <- map(
     net, 
-    function(x) ergm(x ~ edges + b1cov("prop_commit")+ b1cov("risk") + 
-        b1cov("soy")  + b2cov("prop_commit")+ b2cov("risk") + b2cov("soy") 
+    function(x) ergm(x ~ edges + b1cov("prop_commit") * b1cov("risk") + 
+        b1cov("soy")  + b2cov("prop_commit") * b2cov("risk") + b2cov("soy") 
         #edgecov(x, "mean_risk")
         ),
     .progress = TRUE)
-toc() # 281s
+toc() # 580s
 ```
 
 ```{r}
@@ -435,14 +539,29 @@ out |>
     geom_errorbarh(aes(xmin = estimate - std.error, xmax = estimate + std.error, 
                        color = p_value), height = 0.1) +
     scale_color_brewer(palette = "Set1") +
-    facet_wrap(~year)
+    facet_wrap(~year) 
 
 # ggsave(
-#     filename = "ergms_bipartite.png", path = "figures/", device = "png",
-#     plot = last_plot(), width = 6, height = 4, dpi = 400
+#     filename = "ergms_bipartite_interaction.png", path = "figures/", device = "png",
+#     plot = last_plot() + theme_light(base_size = 8), width = 6, height = 4, dpi = 400
 # )
 ```
 
+
+```{r}
+summary(fits[[8]])
+```
+
+Goodness of fit
+
+```{r}
+mcmc.diagnostics(fits[[8]])
+```
+
+
+## Ideas:
+
+- Run ergms on one-mode networks centered on companies given i) the municipalities they outsource from, and ii) the companies they sell to (which in turn is a proxy of the countries where it goes to). The link weigth is the co-occurrence. A `absdiff()` term will account for homophily in risk taking or adoption tendencies.
 
 ## Old code
 

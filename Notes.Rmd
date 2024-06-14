@@ -5,15 +5,22 @@ editor_options:
   chunk_output_type: inline
 ---
 
+## meeting 240609
+
+- New strategy for interaction effect between risk and commitment. Two options
+    - Categorical: Define dummies with 1/0
+    - Continuous:  % commitment vs normalized deforestation risk / area.
+- Try linear regressions following lit review on homophily.
+
 ## Meeting 240404
 
 - Viaje de Angela sirvio para fortalecer contactos con Selva y Smithsonian.
 
 ## Meeting 230427
 
-- ergms with weighted, compare years
-- trajectories through time of companies in the soy / risk space
-- diff-in-diff for the treatment of signing agreement. You need companies wihtout agreement to test before / after 
+- ergms with weighted, compare years [done without weights, ergm with weights do not converge]
+- trajectories through time of companies in the soy / risk space [done]
+- diff-in-diff for the treatment of signing agreement. You need companies wihtout agreement to test before / after [discussed: unlikely to work due to lack of matching, very few companies committed with features that are unique in the dataset (high export, high risk)]
 - ergm term diff() commitment in company (1/0) - municipality normalized deforestation risk (0:1)
 
 ## Meeting 230425
