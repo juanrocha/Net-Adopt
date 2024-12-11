@@ -5,6 +5,13 @@ editor_options:
   chunk_output_type: inline
 ---
 
+## meeting 241112
+
+- Re run same model with:
+    - only cerrado and non-cerrado municipalities [done]
+    - drop the area normalization so effects are a bit bigger but control for municipality area [done]
+    - compare AIC to drop models with small coeffs that contracdict themselves.
+
 ## meeting 240609
 
 - New strategy for interaction effect between risk and commitment. Two options

@@ -18,7 +18,7 @@ dat
 # J240404: actors need to be the same across years
 
 m2020 <- dat |> 
-    filter(year == 2020) |> 
+    filter(year == 2020, biome == "CERRADO") |> 
     select(municipality_of_production, exporter) |> 
     arrange(exporter) |> 
     filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
@@ -28,7 +28,7 @@ m2020 <- dat |>
     arrange(municipality_of_production) #
 
 m2018 <- dat |> 
-    filter(year == 2018) |> 
+    filter(year == 2018, biome == "CERRADO") |> 
     select(municipality_of_production, exporter) |> 
     arrange(exporter) |> 
     filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
@@ -42,7 +42,7 @@ m2018 <- dat |>
 #now run again m2020 filtering for the same:
 
 m2020 <- dat |> 
-    filter(year == 2020) |> 
+    filter(year == 2020, biome == "CERRADO") |> 
     select(municipality_of_production, exporter) |> 
     arrange(exporter) |> 
     filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
@@ -72,7 +72,7 @@ dat |>
 
 # Attribute file for continuous attributes for A
  
-exporter_attributes <- dat |> filter(year == 2020) |> arrange(exporter) |> 
+exporter_attributes <- dat |> filter(year == 2020, biome == "CERRADO") |> arrange(exporter) |> 
     filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
     filter(exporter %in% names(m2020)) |> 
     select(exporter, zd = zero_deforestation_brazil_soy) |> 
@@ -88,7 +88,7 @@ exporter_attributes <- dat |> filter(year == 2020) |> arrange(exporter) |>
 
 exporter_attributes <- exporter_attributes |> 
     left_join(
-        dat |> filter(year == 2019) |> arrange(exporter) |> 
+        dat |> filter(year == 2019, biome == "CERRADO") |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
             filter(exporter %in% names(m2020)) |> 
             select(exporter, zd = zero_deforestation_brazil_soy) |> 
@@ -101,7 +101,7 @@ exporter_attributes <- exporter_attributes |>
             summarize(commitment_2019 = sum(commitment_2019))
     ) |> 
     left_join(
-        dat |> filter(year == 2018) |> arrange(exporter) |> 
+        dat |> filter(year == 2018, biome == "CERRADO") |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
             filter(exporter %in% names(m2020)) |> 
             select(exporter, zd = zero_deforestation_brazil_soy) |> 
@@ -114,7 +114,7 @@ exporter_attributes <- exporter_attributes |>
             summarize(commitment_2018 = sum(commitment_2018))
     ) |> 
     left_join(
-        dat |> filter(year == 2017) |> arrange(exporter) |> 
+        dat |> filter(year == 2017, biome == "CERRADO") |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
             filter(exporter %in% names(m2020)) |> 
             select(exporter, zd = zero_deforestation_brazil_soy) |> 
@@ -129,7 +129,7 @@ exporter_attributes <- exporter_attributes |>
     
 exporter_attributes <- exporter_attributes |> 
     left_join(
-        dat |> filter(year == 2020) |> arrange(exporter) |> 
+        dat |> filter(year == 2020, biome == "CERRADO") |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
             filter(exporter %in% names(m2020)) |> 
             group_by(exporter) |> 
@@ -139,14 +139,14 @@ exporter_attributes <- exporter_attributes |>
             )
     ) |> 
     left_join(
-        dat |> filter(year == 2020) |> arrange(exporter) |> 
+        dat |> filter(year == 2020, biome == "CERRADO") |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
             filter(exporter %in% names(m2020)) |> 
             select(exporter, importer) |> unique() |> 
             group_by(exporter) |> summarize(buyers=n())
     ) |> 
     left_join(
-        dat |> filter(year == 2020) |> arrange(exporter) |> 
+        dat |> filter(year == 2020, biome == "CERRADO") |> arrange(exporter) |> 
             filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
             filter(exporter %in% names(m2020)) |> 
             select(exporter, country_of_first_import) |> unique() |> 
@@ -157,7 +157,7 @@ write_tsv(exporter_attributes, file = "data/attributes-exporter-2020.txt", col_n
 
 
 
-dat |> filter(year == 2020) |> arrange(municipality_of_production) |> 
+dat |> filter(year == 2020, biome == "CERRADO") |> arrange(municipality_of_production) |> 
     filter( exporter != "DOMESTIC CONSUMPTION", exporter != "UNKNOWN") |> 
     filter(municipality_of_production %in% m2020$municipality_of_production) |> 
     group_by(municipality_of_production) |> 
@@ -231,3 +231,12 @@ dat |> filter(year == 2020) |> arrange(municipality_of_production) |>
 # Dollar value of soy traded in 2020
 # Number of buyers in 2020 (importers)
 # Number of markets in 2020 (countries)
+
+
+## Check errors reported by Angela
+dat |> 
+    select(municipality_of_production, year, biome) |> 
+    unique() |> 
+    filter(biome == "CERRADO") |> 
+    group_by(year) |> 
+    summarize(sum_mun = n())

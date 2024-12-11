@@ -517,6 +517,8 @@ fits <- map(
         ),
     .progress = TRUE)
 toc() # 580s
+
+# save(fits, file = "data/ergms_full_network.Rda")
 ```
 
 ```{r}
