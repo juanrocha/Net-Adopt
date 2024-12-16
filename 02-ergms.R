@@ -10,12 +10,24 @@ load("data/cleaned_networks_full.Rda")
 load("data/cleaned_networks_cerrado.Rda")
 load("data/cleaned_networks_non-cerrado.Rda")
 
+## tests
+tic()
+fit0 <- ergm(
+    net[[8]] ~ edges + b1cov("prop_commit") * b1cov("risk") +
+        b1cov("soy")  + b2cov("prop_commit") * b2cov("risk") + b2cov("soy") +
+        diff("prop_commit") + diff("risk") +
+        gwdsp(fixed=FALSE, cutoff=30)
+)
+toc()
+
+
 tic()
 fits <- map(
-    net, 
-    function(x) ergm(x ~ edges + b1cov("prop_commit") * b1cov("risk") + 
-                         b1cov("soy")  + b2cov("prop_commit") * b2cov("risk") + b2cov("soy") 
-                     #edgecov(x, "mean_risk")
+    net,
+    function(x) ergm(
+        x ~ edges + b1cov("prop_commit") * b1cov("risk") +
+            b1cov("soy")  + b2cov("prop_commit") * b2cov("risk") + b2cov("soy") +
+            gwnsp(decay, fixed=FALSE, cutoff=30)
     ),
     .progress = TRUE)
 toc() # 580s

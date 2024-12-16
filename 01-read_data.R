@@ -260,18 +260,23 @@ df_attr <- pmap(
     }
 )
 
-df_attr <- map(df_attr, function(x) mutate(x, risk_scaled = mean_risk / (max(mean_risk))))
+## normalizing / rescaling risk
+df_attr <- map(
+    df_attr, function(x) mutate(
+        x, risk_scaled = mean_risk / (median(mean_risk)),
+        risk_log = log1p(sum_risk),
+        risk_stand = risk_log - mean(risk_log) / sd(risk_log)))
 
 net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "soy" <- y$soy_tonnes_log; return(x)})
 net <- map2(.x = net, .y = df_attr,
-            .f = function(x,y) {x %v% "risk" <- y$sum_risk; return(x)})
+            .f = function(x,y) {x %v% "risk" <- y$risk_stand; return(x)})
 net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "prop_commit" <- y$prop_commit; return(x)})
 # net <- map2(.x = net, .y = df_attr,
 #             .f = function(x,y) {x %v% "risk_norm" <- as.numeric(y$norm_risk); return(x)})
 
-save(net, file = "data/cleaned_networks_non-cerrado.Rda")
+save(net, file = "data/cleaned_networks_full.Rda")
 
 
 

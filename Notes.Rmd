@@ -5,6 +5,15 @@ editor_options:
   chunk_output_type: inline
 ---
 
+## meeting 241216
+
+- Entre mas agreements mas diversificacion de links: GWESP
+- Interaction term between b1:b2
+- un atributo que sea de los dos, normalizado por la media
+    - % commitment
+    - mean_risk
+- difference entre los estadisticos que tienen las mismas unidades una vez estan normalizados.
+
 ## meeting 241112
 
 - Re run same model with:
