@@ -10,29 +10,38 @@ load("data/cleaned_networks_full.Rda")
 load("data/cleaned_networks_cerrado.Rda")
 load("data/cleaned_networks_non-cerrado.Rda")
 
-## tests
+## tests: b1 municipalities, b2 companies
 tic()
 fit0 <- ergm(
-    net[[8]] ~ edges + b1cov("prop_commit") * b1cov("risk") +
-        b1cov("soy")  + b2cov("prop_commit") * b2cov("risk") + b2cov("soy") +
-        diff("prop_commit") + diff("risk") +
-        gwdsp(fixed=FALSE, cutoff=30)
+    net[[1]] ~ edges + 
+        b2cov("countries") + b2cov("buyers") +
+        b1cov("prop_commit") * b2cov("risk") +
+        b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") #+
+        #diff("prop_commit") + diff("risk") #+
+        # gwb1dsp(fixed=TRUE, decay = 0.5) +
+        # gwb2dsp(fixed=TRUE, decay = 0.5) #,
+    #control = control.ergm(parallel = 10, parallel.type = "PSOCK")
 )
-toc()
-
+toc() # 20s simple model
+summary(fit0)
 
 tic()
 fits <- map(
     net,
     function(x) ergm(
-        x ~ edges + b1cov("prop_commit") * b1cov("risk") +
-            b1cov("soy")  + b2cov("prop_commit") * b2cov("risk") + b2cov("soy") +
-            gwnsp(decay, fixed=FALSE, cutoff=30)
+        x ~ edges + 
+            b2cov("countries") + b2cov("buyers") +
+            b1cov("prop_commit") * b2cov("risk") +
+            b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") + #+
+            #gwnsp(decay, fixed=FALSE, cutoff=30)
+            gwb2dsp(fixed=TRUE, decay = 0.75), 
+        control = control.ergm(parallel = 10, parallel.type = "PSOCK")
     ),
     .progress = TRUE)
-toc() # 580s
+toc() # 580s | 920s with the new terms for buyers and countries
+# 1326.672 sec elapsed with gwb2dsp, parallel 10 cores
 
-# save(fits, file = "data/ergms_cerrado_network.Rda")
+#save(fits, file = "data/ergms_full_network_geometric.Rda")
 
 
 out <- map(fits, broom::tidy) 
@@ -53,6 +62,6 @@ out |>
     facet_wrap(~year) 
 
 ggsave(
-    filename = "ergms_bipartite_interaction.png", path = "figures/", device = "png",
+    filename = "ergms_bipartite_geometric_250225.png", path = "figures/", device = "png",
     plot = last_plot() + theme_light(base_size = 8), width = 6, height = 4, dpi = 400
 )

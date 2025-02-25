@@ -99,7 +99,7 @@ net <- dat |>
     filter(exporter != "DOMESTIC CONSUMPTION") |> 
     mutate(cerrado = case_when(biome == "CERRADO" ~ TRUE, .default = FALSE)) |> 
     ## This is the line to filter out Cerrado from non-Cerrado. Turn off completely for full network
-    filter(cerrado != TRUE) |> 
+    #filter(cerrado != TRUE) |> 
     group_by(municipality, exporter, year) |> 
     # ungroup() |> skimr::skim()
     summarize(
@@ -129,7 +129,7 @@ df_mun <- dat |> filter(year >= 2013) |>
     filter(exporter != "DOMESTIC CONSUMPTION") |> 
     mutate(cerrado = case_when(biome == "CERRADO" ~ TRUE, .default = FALSE)) |> 
     ## This is the line to filter out Cerrado from non-Cerrado. Turn off completely for full network
-    filter(cerrado != TRUE) |>
+    #filter(cerrado != TRUE) |>
     group_by(municipality, year) |> 
     summarize(
         soy_tonnes = sum(soy_equivalent_tonnes, na.rm = TRUE),
@@ -157,14 +157,14 @@ toc() #14.5
 ## companies attributes
 df_comp <- dat |> 
     filter(year >= 2013) |> 
-    filter(biome != "CERRADO") |> 
+    #filter(biome != "CERRADO") |> 
     select(exporter, municipality = municipality_of_production,
            soy_equivalent_tonnes, soy_deforestation_risk, year, biome) |> 
     filter(municipality != "UNKNOWN" , exporter != "UNKNOWN") |> 
     filter(exporter != "DOMESTIC CONSUMPTION") |> 
     mutate(cerrado = case_when(biome == "CERRADO" ~ TRUE, .default = FALSE)) |> 
     ## This is the line to filter out Cerrado from non-Cerrado. Turn off completely for full network
-    filter(cerrado != TRUE) |>
+    #filter(cerrado != TRUE) |>
     group_by(exporter, year) |> 
     summarize(
         soy_tonnes_log = sum(soy_equivalent_tonnes, na.rm = TRUE) |> log10(), 
@@ -172,13 +172,36 @@ df_comp <- dat |>
                                   na.rm = TRUE) ,
         sum_risk = sum(soy_deforestation_risk, na.rm = TRUE),
         cerrado = sum(cerrado, na.rm = TRUE)
-    ) |> 
+    ) 
+## add the summaries of number of countries, and number of exporters (buyers)
+df_comp_countries <- dat |> 
+    filter(year >= 2013) |> 
+    #filter(biome != "CERRADO") |> 
+    select(exporter, country = country_of_first_import, year) |> 
+    filter(exporter != "DOMESTIC CONSUMPTION") |> 
+    group_by(exporter, year) |> 
+    unique() |> 
+    summarize(countries = n())
+
+df_comp_buyers <- dat |> 
+    filter(year >= 2013) |> 
+    #filter(biome != "CERRADO") |> 
+    select(exporter, importer, year) |> 
+    filter(exporter != "DOMESTIC CONSUMPTION") |> 
+    group_by(exporter, year) |> 
+    unique() |> 
+    summarize(buyers = n())
+
+df_comp <- df_comp |> 
+    left_join(df_comp_countries) |> 
+    left_join(df_comp_buyers) |>
+    ungroup() |> 
     split(~year)
 
 ## commitments dataset with both companies and municipalities
 df_commit <- dat |> 
     filter(year >= 2013) |> 
-    filter(biome != "CERRADO") |> 
+    #filter(biome != "CERRADO") |> 
     select(exporter, municipality =  municipality_of_production,
            commitment = zero_deforestation_brazil_soy,
            soy_equivalent_tonnes, year) |> 
@@ -275,6 +298,26 @@ net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "prop_commit" <- y$prop_commit; return(x)})
 # net <- map2(.x = net, .y = df_attr,
 #             .f = function(x,y) {x %v% "risk_norm" <- as.numeric(y$norm_risk); return(x)})
+net <- map2(.x = net, .y = df_attr,
+            .f = function(x,y) {x %v% "countries" <- y$countries; return(x)})
+net <- map2(.x = net, .y = df_attr,
+            .f = function(x,y) {x %v% "buyers" <- y$buyers; return(x)})
+
+
+## J250225: It is very difficult to set the matrix in year -1 as a edge attribute on year 0
+## the reason is the difference in actors from a network to another.
+# m1 <- net[[8]] |> as.sociomatrix()
+# m2 <- net[[7]] |> as.sociomatrix()
+# 
+# dim(m1) # future
+# dim(m2) # past
+# sum(!colnames(m1) %in% colnames(m2))
+# # complement of 2, the smaller network: first compute columns
+# c2 <- matrix(0, nrow = nrow(m2), ncol = sum(!colnames(m1) %in% colnames(m2)),
+#              dimnames = list(rownames(m2), colnames(m1)[!colnames(m1) %in% colnames(m2)]))
+# # merge
+# m2 <- cbind(m2,c2)
+
 
 save(net, file = "data/cleaned_networks_full.Rda")
 
