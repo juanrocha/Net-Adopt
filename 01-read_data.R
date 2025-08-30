@@ -1,7 +1,7 @@
 ## Read raw data and clean up datasets to create networks later
 ## Updated 20241211 to simplify steps from 03-bipartite.Rmd
 ## Old commented code is from veresion 2.5 of Trase
-
+## Current settings for the full network, needs manual adjustment for cerrado vs non-cerrado datasets
 library(tidyverse)
 library(fs)
 library(tictoc)
@@ -116,6 +116,8 @@ net <- dat |>
 #             loops = FALSE)
 net
 
+# if using homegeneous networks:
+load("data/homogeneous_nets.Rda")
 # get the attributes table on the same order as nodes in the network
 df_attr <- list()
 df_attr <- map(net, function(x) {y <- tibble(node = network.vertex.names(x)); return(y)})
@@ -283,6 +285,14 @@ df_attr <- pmap(
     }
 )
 
+### fill up with zeroes for isolate attributes:
+df_attr <- map(
+    df_attr,
+    .f = function(x) {
+        x |> mutate(across(soy_tonnes:last_col(), function(z) replace_na(z, 0)))
+    }
+)
+
 ## normalizing / rescaling risk
 df_attr <- map(
     df_attr, function(x) mutate(
@@ -290,12 +300,27 @@ df_attr <- map(
         risk_log = log1p(sum_risk),
         risk_stand = risk_log - mean(risk_log) / sd(risk_log)))
 
+## make prop-commitment categorical for modelling purposes
+#df_attr[[1]] |> select(node, prop_commit) |> filter(is.na(prop_commit))
+df_attr <- map(
+    df_attr, function(x) mutate(
+        x, cat_commit = case_when(
+            prop_commit < 0.5 ~ "low", 
+            prop_commit >= 0.5 ~ "high",
+            .default = "none"
+        )
+    )
+)
+
+
 net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "soy" <- y$soy_tonnes_log; return(x)})
 net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "risk" <- y$risk_stand; return(x)})
 net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "prop_commit" <- y$prop_commit; return(x)})
+net <- map2(.x = net, .y = df_attr,
+            .f = function(x,y) {x %v% "cat_commit" <- y$cat_commit; return(x)})
 # net <- map2(.x = net, .y = df_attr,
 #             .f = function(x,y) {x %v% "risk_norm" <- as.numeric(y$norm_risk); return(x)})
 net <- map2(.x = net, .y = df_attr,

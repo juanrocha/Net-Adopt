@@ -5,6 +5,28 @@ editor_options:
   chunk_output_type: inline
 ---
 
+## Meeting 20250829
+
+[] Replace cat_commit for municipalities with NAs, and then run b1starmix because we want it centered on municipalities. It should read:
+> b2starmix.2.cat_commit.NA.high   b2starmix.2.cat_commit.NA.low 
+
+[] Use the gw1degree on municipalities. make sure to explore the decay on a short ergm.
+
+[] another option to run the multiple year term is using the stergm command.
+
+[] once the model is working for the full network over time, replicate the cerrado vs non-cerrado comparison.
+
+## Meeting 20250226
+
+[x] Add the gwdegree terms (this should help with convergence)
+    - The interpretation of this term is not that they just have more ties, but it’s often called an ‘anti-preferential attachment’ term. If negative, it means that locations/producers that have ties tend in general to have more ties. If positive, it tends to show that there’s an even distribution of ties.
+[] Run the gw2dp with the parameters suggested by Lorien to try to find a good decay for it
+[x] Add the tergm term
+[] At this point I think we should look at the output and decide whether we should add the b2starmix
+[] Add b2startmix (if we decide is a good next step)
+    - Warning!: b2starmix.2.prop_commit.1.0.997832300916454 are at their smallest attainable values. Their coefficients will be fixed at -Inf.
+[] Discuss whether makes sense to do the stergm
+
 ## meeting 241216
 
 - Entre mas agreements mas diversificacion de links: GWESP
