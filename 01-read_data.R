@@ -312,6 +312,16 @@ df_attr <- map(
     )
 )
 
+## set cat_commit for municipalities to NA for modelling: there are 2278 municipalites on mode 1 (first on the list)
+## set cat_commit for municipalities to zero
+df_attr[[1]] |> select(node, cat_commit) |> slice(2275:2280)
+df_attr <- map(
+    df_attr, function(x) {
+        x$cat_commit[1:2278] <- 0
+        return(x)
+    }
+)
+# Doesn't work due to Error: In term ‘b2starmix’ in package ‘ergm’: Attribute ‘"cat_commit"’ has missing data, which is not currently supported by ergm
 
 net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "soy" <- y$soy_tonnes_log; return(x)})

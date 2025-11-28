@@ -34,18 +34,19 @@ load("data/cleaned_networks_non-cerrado.Rda")
 tic()
 fit0 <- ergm(
     net[[8]] ~ edges + 
-        b1starmix(k = 2, attr = "cat_commit", base = c(2,3)) + 
-        #b2starmix(k = 2, attr = "cat_commit", base = c(2,3)) +
+        #b1starmix(k = 2, attr = "cat_commit") + 
+        b2starmix(k = 2, attr = "cat_commit") +
         b2cov("countries") + b2cov("buyers") +
         b1cov("prop_commit") * b2cov("risk") +
         b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") +
         ##diff("prop_commit") + diff("risk") #+
-        gwb2degree(fixed = TRUE, decay = 2.86) + 
-        #gwb1degree(fixed = TRUE, decay = 0.6) +
+        #gwb2degree(fixed = TRUE, decay = 2.86) + 
+        gwb1degree(fixed = TRUE, decay = 0.6) +
         edgecov(as.sociomatrix(net[[1]]), attrname = "past_net") +
         ##gwb1dsp(fixed=TRUE, decay = 0.5) +
         gwb2dsp(fixed=TRUE, decay = 0.75),
-    control = control.ergm(parallel = 10, parallel.type = "PSOCK")
+    # short ergm, change  MCMLE.maxit = 60
+    control = control.ergm(parallel = 10, parallel.type = "PSOCK") 
 )
 toc() 
 # 20s simple model: b1-2covs, lines 38:40
@@ -66,7 +67,7 @@ toc()
 tic()
 fit0 <- ergm(
     net[[2]] ~ edges + 
-        b1star(k=2, attr="cat_commit"), 
+        b1starmix(k=2, attr="cat_commit", base = c(2,3)), 
         #gwb2degree(fixed = TRUE, decay=2.85) + gwb1degree(fixed = FALSE, cutoff = 500) ,
         ##gwb1dsp(fixed=TRUE, decay = 0.5) +
         #gwb2dsp(fixed=FALSE, cutoff = 100),
@@ -145,3 +146,9 @@ toc() #728.496 sec elapsed, 12mins
 
 summary(fit2020)
 #save(fits, fit2020, file = "data/tergms_full_network_geometric.Rda")
+
+
+
+#### temporal ####
+library(terg)
+library(networkDynamic)

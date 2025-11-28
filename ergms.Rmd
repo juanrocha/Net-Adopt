@@ -1,0 +1,188 @@
+---
+title: "ERGMs report"
+output:
+    html_document:
+      theme:
+        bootswatch: cosmo
+        code_font:
+            google: Fira Code
+      df_print: paged
+      code_folding: show
+      toc: true
+      toc_float:
+        collapsed: true
+        smooth_control: true
+      toc_depth: 3
+      fig_caption: true
+      highlight: haddock
+      self_contained: false
+      lib_dir: libs
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(fs)
+library(ergm)
+```
+
+Dear Angela, Lorien,
+
+Below you find a summary of what I tried, succeed or failed from our conversations 
+in late February. To refresh your memory, here are my notes of the to-do list: 
+
+- [x] Add the `gwdegree` terms (this should help with convergence)
+
+    - The interpretation of this term is not that they just have more ties, but it’s often called an ‘anti-preferential attachment’ term. If negative, it means that locations/producers that have ties tend in general to have more ties. If positive, it tends to show that there’s an even distribution of ties.
+
+- [ ] Run the gw2dp with the parameters suggested by Lorien to try to find a good decay for it
+
+- [x] Add the tergm term
+
+- [ ] At this point I think we should look at the output and decide whether we should add the b2starmix
+
+- [ ] Add b2startmix (if we decide is a good next step)
+
+    -  Warning!: `b2starmix.2.prop_commit.1.0.997832300916454 are at their smallest attainable values. Their coefficients will be fixed at -Inf.`
+    - Message: long list of bstarmix stasts `are not varying. This may indicate that the observed data occupies an extreme point in the sample space or that the estimation has reached a dead-end configuration.`
+    - Warning: `Unable to reach target effective size in iterations alotted.`
+
+- [ ] Discuss whether makes sense to do the stergm
+
+In summary, I managed to fit the `tergm` using the previous network year as edge covariate.
+However, when mixed with the `gwdegree` terms it does not coverge, it does not finish
+even when run over night or several days. Checking help online, a plausible explanation is that
+the terms are colinear. I have the same problem with `bstarmix` statistic.
+
+## One network test
+
+To test some of your suggestions I fitted the following model turning on and off
+different settings. Below the timing of each run and the errors / warnings I got:
+
+```{r, eval=FALSE, highlight=TRUE, attr.source='.numberLines'}
+
+tic()
+fit0 <- ergm(
+    net[[2]] ~ edges + 
+        b2cov("countries") + b2cov("buyers") +
+        b1cov("prop_commit") * b2cov("risk") +
+        b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") +
+        ##diff("prop_commit") + diff("risk") #+
+        #b1starmix(k = 2, attr = "prop_commit") + #b2starmix(k = 2, attr = "prop_commit") +
+        # gwb2degree(fixed = TRUE, decay = 0.6) + gwb1degree(fixed = TRUE, decay = 0.6) +
+        edgecov(as.sociomatrix(net[[1]]), attrname = "past_net") +
+        ##gwb1dsp(fixed=TRUE, decay = 0.5) +
+        gwb2dsp(fixed=TRUE, decay = 0.75),
+    control = control.ergm(parallel = 10, parallel.type = "PSOCK")
+)
+toc() 
+```
+
+
+
+-  Simple model: b1-2covs, lines 3:6 takes 20 seconds
+
+- `bstarmix` terms do not converge. When ran together (b1 and b2) it does not even finish. Here are some warnings and errors when using only one:
+
+    - ‘b1starmix.2.prop_commit.0.993925116986996.0’, and ‘b1starmix.2.prop_commit.0.996493085308564.0’ are not varying. This may indicate that the observed data occupies an extreme point in the sample space or that the estimation has reached a dead-end configuration.
+
+    - MCMLE estimation stuck. There may be excessive correlation between model terms, suggesting a poor model for the observed data. If target.stats are specified, try increasing SAN parameters.
+
+    - In addition: Warning message: In ergm_MCMC_sample(s, control, theta = mcmc.init, verbose = max(verbose: Unable to reach target effective size in iterations alotted.
+
+-  `gwb2degree`: 306.311 sec elapsed with gwb2degree fixed, 357s using both gwdegrees
+
+- `edgecov`: I got stuck with multiple errors here but finally found a way around using as.sociomatrix(previous network) is working. 731 seconds.
+
+- `gwb2dsp`: 
+
+    - Warning: ‘glpk’ selected as the solver, but package ‘Rglpk’ is not available; falling back to ‘lpSolveAPI’. This should be fine unless the sample size and/or the number of parameters is very big.
+    
+    - after installing package: In ergm_MCMC_sample(s, control, theta = mcmc.init, verbose = max(verbose -  : Unable to reach target effective size in iterations alotted.
+
+- `gwb2dsp`: a model with only this term takes 7.3s, so relatively fast, but it slows down when combined with other terms. It takes 468.478 sec elapsed with gwd2dsp, but it fails with gwdegrees. I believe the terms are colinear.
+
+
+## All networks
+
+Based on the profiling above I decided to fit the following model (that works) to all our networks / years:
+
+```{r eval=FALSE}
+tic()
+fits <- map2(
+    .x = net[2:length(net)],
+    .y = net[1:length(net)-1],
+    function(x,y) ergm(
+        x ~ edges + 
+            b2cov("countries") + b2cov("buyers") +
+            b1cov("prop_commit") * b2cov("risk") +
+            b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") + 
+            edgecov(as.sociomatrix(y), attrname = "past_net") +
+            gwb2dsp(fixed=TRUE, decay = 0.75), 
+        control = control.ergm(parallel = 10, parallel.type = "PSOCK")
+    ),
+    .progress = TRUE)
+toc()
+```
+
+It takes ~40mins to complete. Below the result:
+
+```{r warning=FALSE, message=FALSE}
+load("data/tergms_full_network_geometric.Rda")
+
+out <- map(fits, broom::tidy) 
+out <- map2(out, names(fits), function(x,y) {x$year <- y; return(x)})
+out <- bind_rows(out)
+out |> 
+    mutate(p_value = case_when(
+        p.value < 0.01 ~ "< 0.01",
+        p.value >=0.01 & p.value < 0.05 ~ "< 0.05",
+        p.value >= 0.05 ~ "> 0.05"
+    )) |> 
+    filter(term != "edges") |> 
+    ggplot(aes(estimate, term)) +
+    geom_point(aes(color = p_value, shape = p_value)) +
+    geom_errorbarh(aes(xmin = estimate - std.error, xmax = estimate + std.error, 
+                       color = p_value), height = 0.1) +
+    scale_color_brewer(palette = "Set1") +
+    facet_wrap(~year, ncol = 4) +
+    theme_light(base_size = 12) +
+    theme(legend.position = c(0.9,0.2), legend.position.inside = TRUE) 
+
+```
+
+When interpreting results, remember that `b1` are municipalities, and `b2` companies. The plot has error bars which are the estimate +/- standard deviation. However they are so small it does not show on the plot. If you prefer a regression table:
+
+```{r}
+summary(fits[[7]])
+```
+
+Just for fun I fit a model on the 2020 network with all previous years as edge covariates:
+
+```{r}
+fit2020 |> broom::tidy() |> 
+    mutate(p_value = case_when(
+        p.value < 0.01 ~ "< 0.01",
+        p.value >=0.01 & p.value < 0.05 ~ "< 0.05",
+        p.value >= 0.05 ~ "> 0.05"
+    )) |> 
+    filter(term != "edges") |> 
+    ggplot(aes(estimate, term)) +
+    geom_point(aes(color = p_value, shape = p_value)) +
+    geom_errorbarh(aes(xmin = estimate - std.error, xmax = estimate + std.error, 
+                       color = p_value), height = 0.1) +
+    scale_color_brewer(palette = "Set1") +
+    theme_light(base_size = 12)
+```
+
+
+
+## GOF
+
+Only pulling out diagnostics for the last model (2020) with only one edge covariate (2019):
+
+```{r, fig.height=10, fig.width=7, fig.ncol=2}
+
+mcmc.diagnostics(fits[[7]])
+```
+

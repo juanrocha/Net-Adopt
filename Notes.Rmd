@@ -5,12 +5,62 @@ editor_options:
   chunk_output_type: inline
 ---
 
+## Meeting 20251020
+
+[] Recode cat_commit not with an NA but with with a level == 0
+
+[] How do we deal with time: before / after implementation of the legislation.
+Do not use the tergm in all years. Use the tergms to explore the idea of stickyness
+
+- How commitments change over time, compute for exploration: commitments per year
+- Persistence side of eq is what controls for stickyness 
+- use the same formula for the Formation and Persistence terms
+
+Interpretations:
+- gwb2dsp: centered on companies, it measures the tendency of companies to share the same municipalities
+- negative sign means they tend to share centrality.
+
 ## Meeting 20250829
 
-[] Replace cat_commit for municipalities with NAs, and then run b1starmix because we want it centered on municipalities. It should read:
+[X] Replace cat_commit for municipalities with NAs, and then run b1starmix because we want it centered on municipalities. It should read:
 > b2starmix.2.cat_commit.NA.high   b2starmix.2.cat_commit.NA.low 
 
-[] Use the gw1degree on municipalities. make sure to explore the decay on a short ergm.
+> Done but it doesn't work due to Error: In term ‘b2starmix’ in package ‘ergm’: Attribute ‘"cat_commit"’ has missing data, which is not currently supported by ergm
+
+[X] Use the gw1degree on municipalities. make sure to explore the decay on a short ergm.
+
+Call:
+ergm(formula = net[[8]] ~ edges + b2cov("countries") + b2cov("buyers") + 
+    b1cov("prop_commit") * b2cov("risk") + b1cov("soy") + b2cov("prop_commit") * 
+    b1cov("risk") + b2cov("soy") + gwb1degree(fixed = TRUE, decay = 0.6) + 
+    edgecov(as.sociomatrix(net[[1]]), attrname = "past_net") + 
+    gwb2dsp(fixed = TRUE, decay = 0.75), control = control.ergm(parallel = 10, 
+    parallel.type = "PSOCK", MPLE.maxit = 5))
+
+Monte Carlo Maximum Likelihood Results:
+
+                               Estimate Std. Error MCMC %  z value Pr(>|z|)    
+edges                        -1.182e+01  1.086e-01      0 -108.759  < 1e-04 ***
+b2cov.countries              -2.756e-02  1.184e-03      0  -23.280  < 1e-04 ***
+b2cov.buyers                  3.665e-03  4.792e-04      0    7.648  < 1e-04 ***
+b1cov.prop_commit            -1.228e+00  5.321e-02      0  -23.080  < 1e-04 ***
+b2cov.risk                    6.277e-02  7.957e-03      0    7.888  < 1e-04 ***
+b1cov.prop_commit:b2cov.risk  1.100e-01  8.528e-03      0   12.896  < 1e-04 ***
+b1cov.soy                     1.005e+00  2.201e-02      0   45.655  < 1e-04 ***
+b2cov.prop_commit             6.782e-01  3.355e-02      0   20.214  < 1e-04 ***
+b1cov.risk                    3.699e-02  5.264e-03      0    7.027  < 1e-04 ***
+b2cov.prop_commit:b1cov.risk -4.075e-02  9.071e-03      0   -4.492  < 1e-04 ***
+b2cov.soy                     9.345e-01  1.911e-02      0   48.898  < 1e-04 ***
+gwb1deg.fixed.0.6            -1.287e+00  8.681e-02      0  -14.825  < 1e-04 ***
+edgecov.past_net              1.049e+00  6.803e-02      0   15.416  < 1e-04 ***
+gwb2dsp.fixed.0.75           -1.620e-02  5.062e-03      0   -3.200  0.00137 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+     Null Deviance: 1964263  on 1416916  degrees of freedom
+ Residual Deviance:   86511  on 1416902  degrees of freedom
+ 
+AIC: 86539  BIC: 86709  (Smaller is better. MC Std. Err. = 0.5941)
 
 [] another option to run the multiple year term is using the stergm command.
 
