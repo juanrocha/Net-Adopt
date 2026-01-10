@@ -35,7 +35,7 @@ tic()
 fit0 <- ergm(
     net[[8]] ~ edges + 
         #b1starmix(k = 2, attr = "cat_commit") + 
-        b2starmix(k = 2, attr = "cat_commit") +
+        #b2starmix(k = 2, attr = "cat_commit", base = c(2,3)) +
         b2cov("countries") + b2cov("buyers") +
         b1cov("prop_commit") * b2cov("risk") +
         b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") +
@@ -146,6 +146,22 @@ toc() #728.496 sec elapsed, 12mins
 
 summary(fit2020)
 #save(fits, fit2020, file = "data/tergms_full_network_geometric.Rda")
+
+
+#### visualizations ####
+
+# How commitments change over time
+map(df_attr, function(x) {
+        x |> rowid_to_column() |> 
+        mutate(class = case_when(rowid <= 2278 ~ "municipality", .default = "company"))
+    }) |> 
+    bind_rows() |> 
+    filter(!is.na(year), prop_commit > 0) |> 
+    ggplot(aes(year, prop_commit)) +
+    geom_boxplot(aes(group= year, color = class, fill = class), alpha = 0.5) +
+    geom_jitter(aes(color = class), alpha = 0.3) +
+    facet_wrap(~class) 
+
 
 
 
