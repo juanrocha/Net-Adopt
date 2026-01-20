@@ -7,12 +7,12 @@ library(tsna)
 library(tictoc)
 
 tic()
-dnet <- networkDynamic(network.list = net)
-toc() # takes several mins
+dnet <- networkDynamic(network.list = net[6:8])
+toc() # takes several mins, 252s | 4.2m
 
 
 tic()
-mod1 <- tergm(
+mod2 <- tergm(
     dnet ~ Form(
         ~ edges + 
             gwb2degree(fixed = TRUE, decay=2.85) +
@@ -28,6 +28,11 @@ mod1 <- tergm(
             b1cov("prop_commit") * b2cov("risk") +
             b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy")
     ),
-    estimate = "CMLE", times = 0:8
+    estimate = "CMLE", times = 1:3
 )
-toc()
+toc() 
+#50s without geometric terms
+# 214975.933 sec elapsed | 186Mb object | 2.5 days | mod1
+
+summary(mod1)
+save(mod1, file = "data/termg1.Rda", compress = TRUE)
