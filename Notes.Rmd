@@ -59,8 +59,60 @@ Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’
  Residual Deviance:  127678  on 2833808  degrees of freedom
  
 AIC: 127726  BIC: 128035  (Smaller is better. MC Std. Err. = 6.495)
+
+
+> summary(mod2)
+Call:
+tergm(formula = dnet ~ Form(~edges + gwb2degree(fixed = TRUE, 
+    decay = 2.85) + b2star(k = 2, attr = "cat_commit") + b2cov("countries") + 
+    b2cov("buyers") + b1cov("prop_commit") * b2cov("risk") + 
+    b1cov("soy") + b2cov("prop_commit") * b1cov("risk") + b2cov("soy")) + 
+    Persist(~edges + gwb2degree(fixed = TRUE, decay = 2.85) + 
+        b2star(k = 2, attr = "cat_commit") + b2cov("countries") + 
+        b2cov("buyers") + b1cov("prop_commit") * b2cov("risk") + 
+        b1cov("soy") + b2cov("prop_commit") * b1cov("risk") + 
+        b2cov("soy")), estimate = "CMLE", times = 1:3)
+
+Monte Carlo Conditional Maximum Likelihood Results:
+
+                                          Estimate Std. Error MCMC %  z value Pr(>|z|)    
+Form(1)~edges                           -5.5870424  0.0332922      0 -167.818  < 1e-04 ***
+Form(1)~gwb2deg.fixed.2.85              -3.6318300  0.0385029      0  -94.326  < 1e-04 ***
+Form(1)~b2star2.cat_commit               0.0044367  0.0001097      0   40.437  < 1e-04 ***
+Form(1)~b2cov.countries                  0.0172886  0.0015020      0   11.510  < 1e-04 ***
+Form(1)~b2cov.buyers                    -0.0379250  0.0057146      0   -6.637  < 1e-04 ***
+Form(1)~b1cov.prop_commit                0.0892602  0.0288128      0    3.098  0.00195 ** 
+Form(1)~b2cov.risk                       0.1004388  0.0073261      0   13.710  < 1e-04 ***
+Form(1)~b1cov.prop_commit:b2cov.risk    -0.0537177  0.0055781      0   -9.630  < 1e-04 ***
+Form(1)~b1cov.soy                        0.2899330  0.0086038      0   33.698  < 1e-04 ***
+Form(1)~b2cov.prop_commit                0.4336603  0.0455930      0    9.512  < 1e-04 ***
+Form(1)~b1cov.risk                       0.0922925  0.0053040      0   17.400  < 1e-04 ***
+Form(1)~b2cov.prop_commit:b1cov.risk    -0.1036894  0.0127140      0   -8.156  < 1e-04 ***
+Form(1)~b2cov.soy                       -0.0504427  0.0095957      0   -5.257  < 1e-04 ***
+Persist(1)~edges                        -2.5675536  0.0906387      0  -28.327  < 1e-04 ***
+Persist(1)~gwb2deg.fixed.2.85           -3.1324113  0.0664676      0  -47.127  < 1e-04 ***
+Persist(1)~b2star2.cat_commit            0.0063975  0.0005315      0   12.036  < 1e-04 ***
+Persist(1)~b2cov.countries               0.0033857  0.0019680      0    1.720  0.08537 .  
+Persist(1)~b2cov.buyers                  0.0289807  0.0068524      0    4.229  < 1e-04 ***
+Persist(1)~b1cov.prop_commit            -0.1408049  0.0898857      0   -1.566  0.11723    
+Persist(1)~b2cov.risk                   -0.1049263  0.0154312      0   -6.800  < 1e-04 ***
+Persist(1)~b1cov.prop_commit:b2cov.risk -0.0088525  0.0125818      0   -0.704  0.48168    
+Persist(1)~b1cov.soy                     0.2644201  0.0175355      0   15.079  < 1e-04 ***
+Persist(1)~b2cov.prop_commit            -0.4456116  0.0692742      0   -6.433  < 1e-04 ***
+Persist(1)~b1cov.risk                    0.1223195  0.0115622      0   10.579  < 1e-04 ***
+Persist(1)~b2cov.prop_commit:b1cov.risk -0.0294775  0.0172190      0   -1.712  0.08691 .  
+Persist(1)~b2cov.soy                     0.1685006  0.0199551      0    8.444  < 1e-04 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+     Null Deviance: 3928525  on 2833832  degrees of freedom
+ Residual Deviance:  114580  on 2833806  degrees of freedom
+ 
+AIC: 114632  BIC: 114966  (Smaller is better. MC Std. Err. = 5.995)
 ```
 
+
+mod1 took 2.5 days on laptop, 186Mb, while mod2 took 9hrs on SRC server 352Mb
 
 ## Meeting 20251020
 

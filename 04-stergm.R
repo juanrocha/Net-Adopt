@@ -34,5 +34,6 @@ toc()
 #50s without geometric terms
 # 214975.933 sec elapsed | 186Mb object | 2.5 days | mod1
 
-summary(mod1)
-save(mod1, file = "data/termg1.Rda", compress = TRUE)
+summary(mod2)
+save(mod2, file = "data/termg2.Rda", compress = TRUE)
+lobstr::obj_size(mod2)
