@@ -5,9 +5,80 @@ editor_options:
   chunk_output_type: inline
 ---
 
+## Meeting 
+
+[] Run fewer years in the tergm, maybe 3 to 4, an early and a late
+    - Fit one model for end, another for begging, 
+    - slice smaller on periods of 2 yrs (possibly improvements on computation time)
+    - must include all same nodes over the observation periods. Include term for `isolates` ~ could be difficult for model to fit. Isolates might be biasing the degree distributions.
+
+[] `b2nodematch` give us the homophily term with diff = TRUE, this one ignores the b1mode. If 2 nodes on b2 match on the attribute, do they tie to the same node on b1 (municipalities). Test as replacement for `b2starmix`
+
+```{}
+> summary(mod1)
+Call:
+tergm(formula = dnet ~ Form(~edges + b2star(k = 2, attr = "cat_commit") + 
+    b2cov("countries") + b2cov("buyers") + b1cov("prop_commit") * 
+    b2cov("risk") + b1cov("soy") + b2cov("prop_commit") * b1cov("risk") + 
+    b2cov("soy")) + Persist(~edges + b2star(k = 2, attr = "cat_commit") + 
+    b2cov("countries") + b2cov("buyers") + b1cov("prop_commit") * 
+    b2cov("risk") + b1cov("soy") + b2cov("prop_commit") * b1cov("risk") + 
+    b2cov("soy")), estimate = "CMLE", times = 1:3)
+
+Monte Carlo Conditional Maximum Likelihood Results:
+
+                                          Estimate Std. Error MCMC %  z value Pr(>|z|)    
+Form(1)~edges                           -7.1218176  0.0362273      0 -196.587  < 1e-04 ***
+Form(1)~b2star2.cat_commit               0.0052657  0.0001111      0   47.404  < 1e-04 ***
+Form(1)~b2cov.countries                  0.0101696  0.0012983      0    7.833  < 1e-04 ***
+Form(1)~b2cov.buyers                    -0.0042062  0.0047813      0   -0.880 0.379008    
+Form(1)~b1cov.prop_commit               -0.0386572  0.0291969      0   -1.324 0.185498    
+Form(1)~b2cov.risk                       0.2432324  0.0095459      0   25.480  < 1e-04 ***
+Form(1)~b1cov.prop_commit:b2cov.risk    -0.0469148  0.0065810      0   -7.129  < 1e-04 ***
+Form(1)~b1cov.soy                        0.2860142  0.0101256      0   28.247  < 1e-04 ***
+Form(1)~b2cov.prop_commit                0.7986872  0.0516753      0   15.456  < 1e-04 ***
+Form(1)~b1cov.risk                       0.0897329  0.0057471      0   15.614  < 1e-04 ***
+Form(1)~b2cov.prop_commit:b1cov.risk    -0.1039600  0.0149309      0   -6.963  < 1e-04 ***
+Form(1)~b2cov.soy                       -0.0481240  0.0114267      0   -4.212  < 1e-04 ***
+Persist(1)~edges                        -4.1843525  0.1138925      0  -36.739  < 1e-04 ***
+Persist(1)~b2star2.cat_commit            0.0122678  0.0002747      0   44.665  < 1e-04 ***
+Persist(1)~b2cov.countries              -0.0076052  0.0022499      0   -3.380 0.000724 ***
+Persist(1)~b2cov.buyers                  0.0018566  0.0102158      0    0.182 0.855787    
+Persist(1)~b1cov.prop_commit            -0.1623530  0.1020539      0   -1.591 0.111642    
+Persist(1)~b2cov.risk                    0.0323884  0.0154778      0    2.093 0.036387 *  
+Persist(1)~b1cov.prop_commit:b2cov.risk  0.0021861  0.0136814      0    0.160 0.873049    
+Persist(1)~b1cov.soy                     0.2314699  0.0205723      0   11.252  < 1e-04 ***
+Persist(1)~b2cov.prop_commit             0.1733725  0.0953840      0    1.818 0.069121 .  
+Persist(1)~b1cov.risk                    0.0735311  0.0138238      0    5.319  < 1e-04 ***
+Persist(1)~b2cov.prop_commit:b1cov.risk -0.0075720  0.0223185      0   -0.339 0.734406    
+Persist(1)~b2cov.soy                     0.1942276  0.0249625      0    7.781  < 1e-04 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+     Null Deviance: 3928525  on 2833832  degrees of freedom
+ Residual Deviance:  127678  on 2833808  degrees of freedom
+ 
+AIC: 127726  BIC: 128035  (Smaller is better. MC Std. Err. = 6.495)
+```
+
+
 ## Meeting 20251020
 
 [] Recode cat_commit not with an NA but with with a level == 0
+
+**Failing:**
+Warning: Model statistics ‘gwb2dsp.fixed.0.75’ are linear combinations of some set of preceding statistics at the current stage of the estimation. This may indicate that the model is nonidentifiable.
+1 Optimizing with step length 0.0011.
+The log-likelihood improved by 26910233150504426274816.0000.
+Estimating equations are not within tolerance region.
+Iteration 3 of at most 60:
+Error in ergm.MCMLE(init, s, s.obs, control = control, verbose = verbose,  : 
+  Number of edges in a simulated network exceeds that in the observed by a factor of more than 20. This is a strong indicator of model degeneracy or a very poor starting parameter configuration. If you are reasonably certain that neither of these is the case, increase the MCMLE.density.guard control.ergm() parameter.
+In addition: Warning messages:
+1: In ergm_MCMC_sample(s, control, theta = mcmc.init, verbose = max(verbose -  :
+  Unable to reach target ESS in iterations alotted.
+2: In ergm_MCMC_sample(s, control, theta = mcmc.init, verbose = max(verbose -  :
+  Unable to reach target ESS in iterations alotted.
 
 [] How do we deal with time: before / after implementation of the legislation.
 Do not use the tergm in all years. Use the tergms to explore the idea of stickyness
