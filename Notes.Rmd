@@ -175,10 +175,71 @@ mod1 took 2.5 days on laptop, 186Mb, while mod2 took 9hrs on SRC server 352Mb
 mod3 took 18hrs on server, 352Mb
 
 
+
 `mcmc.diagnostics(mod3)` are not perfect but in general zero mean and normally distributed.
 Some terms have tiny bimodal distributions (e.g. gw2deg), and some chains look like
 random walks (e.g. b2start2.cat_commit). There is a little bit of skewness in terms like
 b1cov.soy, b1cov.risk, or b2cov.prop_commit. But I believe the fit is decent.
+
+on my laptop
+
+```
+Warning messages:
+1: In NetSeries(nw, times, NA.impute = control$CMLE.NA.impute) :
+  Active vertex set varies from time point to time point. Estimation may not work.
+2: In ergm_MCMC_sample(s, control, theta = mcmc.init, verbose = max(verbose -  :
+  Unable to reach target ESS in iterations alotted.
+> toc() 
+76107.105 sec elapsed
+> summary(mod2)
+Call:
+tergm(formula = dnet ~ Form(~edges + gwb2degree(fixed = TRUE, 
+    decay = 2.85) + b2star(k = 2, attr = "cat_commit") + b2cov("countries") + 
+    b2cov("buyers") + b1cov("prop_commit") * b2cov("risk") + 
+    b1cov("soy") + b2cov("prop_commit") * b1cov("risk") + b2cov("soy")) + 
+    Persist(~edges + gwb2degree(fixed = TRUE, decay = 2.85) + 
+        b2star(k = 2, attr = "cat_commit") + b2cov("countries") + 
+        b2cov("buyers") + b1cov("prop_commit") * b2cov("risk") + 
+        b1cov("soy") + b2cov("prop_commit") * b1cov("risk") + 
+        b2cov("soy")), estimate = "CMLE", times = 1:3)
+
+Monte Carlo Conditional Maximum Likelihood Results:
+
+                                          Estimate Std. Error MCMC %  z value Pr(>|z|)    
+Form(1)~edges                           -5.5865388  0.0337680      0 -165.439  < 1e-04 ***
+Form(1)~gwb2deg.fixed.2.85              -3.6322439  0.0385167      0  -94.303  < 1e-04 ***
+Form(1)~b2star2.cat_commit               0.0044356  0.0001078      0   41.163  < 1e-04 ***
+Form(1)~b2cov.countries                  0.0173087  0.0014671      0   11.798  < 1e-04 ***
+Form(1)~b2cov.buyers                    -0.0378646  0.0057481      0   -6.587  < 1e-04 ***
+Form(1)~b1cov.prop_commit                0.0879091  0.0286387      0    3.070  0.00214 ** 
+Form(1)~b2cov.risk                       0.1003024  0.0072669      0   13.803  < 1e-04 ***
+Form(1)~b1cov.prop_commit:b2cov.risk    -0.0531864  0.0055322      0   -9.614  < 1e-04 ***
+Form(1)~b1cov.soy                        0.2900725  0.0086431      0   33.561  < 1e-04 ***
+Form(1)~b2cov.prop_commit                0.4330966  0.0449158      0    9.642  < 1e-04 ***
+Form(1)~b1cov.risk                       0.0922256  0.0053597      0   17.207  < 1e-04 ***
+Form(1)~b2cov.prop_commit:b1cov.risk    -0.1043263  0.0125928      0   -8.285  < 1e-04 ***
+Form(1)~b2cov.soy                       -0.0505344  0.0095554      0   -5.289  < 1e-04 ***
+Persist(1)~edges                        -2.5665506  0.0909432      0  -28.221  < 1e-04 ***
+Persist(1)~gwb2deg.fixed.2.85           -3.1323296  0.0663577      0  -47.204  < 1e-04 ***
+Persist(1)~b2star2.cat_commit            0.0064024  0.0005386      0   11.886  < 1e-04 ***
+Persist(1)~b2cov.countries               0.0033626  0.0019411      0    1.732  0.08321 .  
+Persist(1)~b2cov.buyers                  0.0290278  0.0068140      0    4.260  < 1e-04 ***
+Persist(1)~b1cov.prop_commit            -0.1414234  0.0895106      0   -1.580  0.11412    
+Persist(1)~b2cov.risk                   -0.1050319  0.0155694      0   -6.746  < 1e-04 ***
+Persist(1)~b1cov.prop_commit:b2cov.risk -0.0087562  0.0125128      0   -0.700  0.48407    
+Persist(1)~b1cov.soy                     0.2643127  0.0176973      0   14.935  < 1e-04 ***
+Persist(1)~b2cov.prop_commit            -0.4430871  0.0698492      0   -6.343  < 1e-04 ***
+Persist(1)~b1cov.risk                    0.1224160  0.0117723      0   10.399  < 1e-04 ***
+Persist(1)~b2cov.prop_commit:b1cov.risk -0.0295463  0.0173648      0   -1.702  0.08885 .  
+Persist(1)~b2cov.soy                     0.1683673  0.0201787      0    8.344  < 1e-04 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+     Null Deviance: 3928525  on 2833832  degrees of freedom
+ Residual Deviance:  114563  on 2833806  degrees of freedom
+ 
+AIC: 114615  BIC: 114950  (Smaller is better. MC Std. Err. = 5.817)
+```
 
 ## Meeting 20251020
 

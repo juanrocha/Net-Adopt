@@ -37,7 +37,7 @@ mod4 <- tergm(
 toc() 
 #50s without geometric terms
 # 214975.933 sec elapsed | 186Mb object | 2.5 days | mod1
-
+# 76107.105 sec elapsed | 186Mb | 21hrs | mod2
 summary(mod2)
 save(mod3, file = "data/termg3.Rda", compress = TRUE)
 lobstr::obj_size(mod2)
