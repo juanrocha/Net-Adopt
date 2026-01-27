@@ -13,7 +13,7 @@ editor_options:
     - must include all same nodes over the observation periods. Include term for `isolates` ~ could be difficult for model to fit. Isolates might be biasing the degree distributions.
 
 Geometric model without homophily, last 3 years:
-```
+```{}
 > summary(mod4)
 Call:
 tergm(formula = dnet ~ Form(~edges + gwb2degree(fixed = TRUE, 
@@ -72,7 +72,7 @@ AIC: 109048  BIC: 109434  (Smaller is better. MC Std. Err. = 18.26)
 
 Geometric model without homofily first 3 years: **failing**
 
-```
+```{}
 Error in ergm.MCMLE(init, s, s.obs, control = control, verbose = verbose,  : 
   Number of edges in a simulated network exceeds that in the observed by a factor of more than 20. This is a strong indicator of model degeneracy or a very poor starting parameter configuration. If you are reasonably certain that neither of these is the case, increase the MCMLE.density.guard control.ergm() parameter.
 In addition: Warning messages:
@@ -87,12 +87,15 @@ In addition: Warning messages:
 
 [] `b2nodematch` give us the homophily term with diff = TRUE, this one ignores the b1mode. If 2 nodes on b2 match on the attribute, do they tie to the same node on b1 (municipalities). Test as replacement for `b2starmix`
 
+
+```{}
     Error: 
 Error in ergm.MCMLE(init, s, s.obs, control = control, verbose = verbose,  : 
   Number of edges in a simulated network exceeds that in the observed by a factor of more than 20. This is a strong indicator of model degeneracy or a very poor starting parameter configuration. If you are reasonably certain that neither of these is the case, increase the MCMLE.density.guard control.ergm() parameter.
 In addition: Warning message:
 In NetSeries(nw, times, NA.impute = control$CMLE.NA.impute) :
   Active vertex set varies from time point to time point. Estimation may not work.
+```
 
 
 ```{}
@@ -256,7 +259,7 @@ b1cov.soy, b1cov.risk, or b2cov.prop_commit. But I believe the fit is decent.
 
 on my laptop
 
-```
+```{}
 Warning messages:
 1: In NetSeries(nw, times, NA.impute = control$CMLE.NA.impute) :
   Active vertex set varies from time point to time point. Estimation may not work.
