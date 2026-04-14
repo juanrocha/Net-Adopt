@@ -9,7 +9,7 @@ library(tictoc)
 load("data/cleaned_networks_full.Rda") 
 
 tic()
-dnet <- networkDynamic(network.list = net[1:3])
+dnet <- networkDynamic(network.list = net[6:8])
 toc() # takes several mins, 252s | 4.2m
 
 
