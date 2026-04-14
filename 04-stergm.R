@@ -6,19 +6,21 @@ library(tergm)
 library(tsna)
 library(tictoc)
 
+load("data/cleaned_networks_full.Rda") 
+
 tic()
 dnet <- networkDynamic(network.list = net[1:3])
 toc() # takes several mins, 252s | 4.2m
 
 
 tic()
-mod5 <- tergm(
+mod <- tergm(
     dnet ~ Form(
         ~ edges + 
-            gwb2degree(fixed = TRUE, decay=2.85) + isolates() +
+            gwb2degree(fixed = TRUE, decay=2.85) + isolates() + 
+            ~F(~gwb2degree, ~nodefactor("cat_commit", levels = "high") ) +
+            ~F(~gwb2degree, ~nodefactor("cat_commit", levels = "low")) +
             gwb2dsp(fixed=TRUE, decay = 0.75) +
-            #b2nodematch(attr= "cat_commit", diff = TRUE) + #Error
-            #b1starmix(k=2, attr="cat_commit", diff=FALSE) + #alternative: failing
             b2star(k = 2, attr = "cat_commit") +
             b2cov("countries") + b2cov("buyers") +
             b1cov("prop_commit") * b2cov("risk") +
@@ -26,6 +28,8 @@ mod5 <- tergm(
     ) + Persist(
         ~ edges + 
             gwb2degree(fixed = TRUE, decay=2.85) + isolates() +
+            ~F(~gwb2degree, ~nodefactor("cat_commit", levels = "high") ) +
+            ~F(~gwb2degree, ~nodefactor("cat_commit", levels = "low")) +
             gwb2dsp(fixed=TRUE, decay = 0.75) +
             #b2nodematch(attr= "cat_commit", diff = TRUE) + # error
             #b1starmix(k=2, attr="cat_commit", diff = FALSE) + # alternative: fails
@@ -43,7 +47,7 @@ toc()
 # mod 3 66051.742 sec elapsed | 18.3hrs | 352Mb
 # mod 4 87110.513 sec elapsed } 24.5hrs | 352Mb
 
-summary(mod4)
-save(mod4, file = "data/termg4.Rda", compress = TRUE)
-lobstr::obj_size(mod4)
-mcmc.diagnostics(mod4)
+summary(mod)
+save(mod, file = "data/termg4.Rda", compress = TRUE)
+lobstr::obj_size(mod)
+mcmc.diagnostics(mod)

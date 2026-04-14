@@ -322,6 +322,18 @@ df_attr <- map(
 #     }
 # )
 # Doesn't work due to Error: In term ‘b2starmix’ in package ‘ergm’: Attribute ‘"cat_commit"’ has missing data, which is not currently supported by ergm
+# 
+# set cat_commit to the opposite of what you're testing in B2 companies, so a filter exclude the B1 municipality attribute.
+# Do it twice to be able to test low and high
+df_attr <- map(
+    df_attr, function(x) {
+        x$cat_commit_b2_low <- x$cat_commit
+        x$cat_commit_b2_high <- x$cat_commit
+        x$cat_commit_b2_low[1:2278] <- "high"
+        x$cat_commit_b2_high[1:2278] <- "low"
+        return(x)
+    }
+)
 
 net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "soy" <- y$soy_tonnes_log; return(x)})
@@ -337,7 +349,10 @@ net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "countries" <- y$countries; return(x)})
 net <- map2(.x = net, .y = df_attr,
             .f = function(x,y) {x %v% "buyers" <- y$buyers; return(x)})
-
+net <- map2(.x = net, .y = df_attr,
+            .f = function(x,y) {x %v% "cat_commit_b2_low" <- y$cat_commit_b2_low; return(x)})
+net <- map2(.x = net, .y = df_attr,
+            .f = function(x,y) {x %v% "cat_commit_b2_high" <- y$cat_commit_b2_high; return(x)})
 
 ## J250225: It is very difficult to set the matrix in year -1 as a edge attribute on year 0
 ## the reason is the difference in actors from a network to another.

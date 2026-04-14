@@ -29,10 +29,29 @@ is `mod4`, but to understand what where the offending terms, I fitted several
 models (`mod1`-`mod3`) adding one at the time. `mcmc.diagnostics` is promising.
 
 When your suggestion doesn't work, I keep track of the type of error or reasons
-for failing.
+for failing. The repository of the project with all the code is at: <https://github.com/juanrocha/Net-Adopt>
 
 
 ## Meetings
+
+### Meeting 20260331
+
+- Options
+- `b2nodematch` is not geometrically weighted. Try `gwdegree` with attribute / filter, that should solve it. Using f operator to apply only the gwdegree with nodes with the attribute. Easiest way is to apply to the term where it does it match. Filter in a way that leaves only the when the companies match, but B1 nodes need to stay there because it is a bipartite. Additional attribute with low and high for B1, so they stay and select the correct things in B2. Three gwdegree, one with everything, one with filter in 'low' for cat_commit, and one for 'high' for 'cat_commit'. If this works, we do not need `b2nodematch`.
+- Use Pavel's tutorials for the filtering function (section 4: https://statnet.org/workshop-advanced-ergm/advanced_ergm_tutorial.html#4_Term_operators)
+
+### Meeting 20260310
+
+- Should risk be an attribute of the municipality, not of the company? Risk is property of the municipality
+- Endogeneity problem on the risk, the moment we randomize, the risk should be recalculated. Remove term covariate for risk in companies, and remove the interaction term.
+    - b2cov.risk
+    - b1cov.prop_commit:b2cov.risk
+- Commitment remove at the municipality level: b1cov.prop_commit
+- Concern: trying to fit the variables in both sides might be the reason to 
+- b2start is accounting for municipality, is looking if everything involved has the same values:
+high commitment companies interact with high commitment municipalities, and low commitment companies interact with low commitment municipalities.
+    - b2star
+- Replace the b2start with b2nodematch attr="cat_commit"
 
 ### Meeting 20251117
 
