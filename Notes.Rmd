@@ -34,11 +34,23 @@ for failing. The repository of the project with all the code is at: <https://git
 
 ## Meetings
 
+### Meeting 20260428
+
+- Talked with Lorien about the error below. We decided to fix the gwb2degree term and exclude b2star. With that we hope it fits. The problem is a heavy tail on the distribution of degree, and it's not one or two outliers
+
 ### Meeting 20260331
 
 - Options
 - `b2nodematch` is not geometrically weighted. Try `gwdegree` with attribute / filter, that should solve it. Using f operator to apply only the gwdegree with nodes with the attribute. Easiest way is to apply to the term where it does it match. Filter in a way that leaves only the when the companies match, but B1 nodes need to stay there because it is a bipartite. Additional attribute with low and high for B1, so they stay and select the correct things in B2. Three gwdegree, one with everything, one with filter in 'low' for cat_commit, and one for 'high' for 'cat_commit'. If this works, we do not need `b2nodematch`.
 - Use Pavel's tutorials for the filtering function (section 4: https://statnet.org/workshop-advanced-ergm/advanced_ergm_tutorial.html#4_Term_operators)
+
+**Errors**
+> Error: In term ‘gwb2degree’ in package ‘ergm’ (called from term ‘Form1’ in package ‘tergm’, called from term ‘N’ in package ‘ergm.multi’, called from term ‘Form’ in package ‘tergm’): unused argument (gw.cutoff = base::quote(1000))
+In addition: Warning message:
+In NetSeries(nw, times, NA.impute = control$CMLE.NA.impute) :
+  Active vertex set varies from time point to time point. Estimation may not work.
+
+
 
 ### Meeting 20260310
 

@@ -18,22 +18,22 @@ mod <- tergm(
     dnet ~ Form(
         ~ edges + 
             gwb2degree(fixed = TRUE, decay=2.85) + isolates() + 
-            ~F(~gwb2degree, ~nodefactor("cat_commit", levels = "high") ) +
-            ~F(~gwb2degree, ~nodefactor("cat_commit", levels = "low")) +
+            ~F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "high") ) +
+            ~F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "low")) +
             gwb2dsp(fixed=TRUE, decay = 0.75) +
-            b2star(k = 2, attr = "cat_commit") +
+            #b2star(k = 2, attr = "cat_commit") +
             b2cov("countries") + b2cov("buyers") +
             b1cov("prop_commit") * b2cov("risk") +
             b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy")
     ) + Persist(
         ~ edges + 
             gwb2degree(fixed = TRUE, decay=2.85) + isolates() +
-            ~F(~gwb2degree, ~nodefactor("cat_commit", levels = "high") ) +
-            ~F(~gwb2degree, ~nodefactor("cat_commit", levels = "low")) +
+            ~F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "high") ) +
+            ~F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "low")) +
             gwb2dsp(fixed=TRUE, decay = 0.75) +
             #b2nodematch(attr= "cat_commit", diff = TRUE) + # error
             #b1starmix(k=2, attr="cat_commit", diff = FALSE) + # alternative: fails
-            b2star(k = 2, attr = "cat_commit") +
+            #b2star(k = 2, attr = "cat_commit") +
             b2cov("countries") + b2cov("buyers") +
             b1cov("prop_commit") * b2cov("risk") +
             b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy")
