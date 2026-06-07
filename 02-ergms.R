@@ -80,14 +80,14 @@ fits <- map2(
     .x = net[2:length(net)],
     .y = net[1:length(net)-1],
     function(x,y) ergm(
-        x ~ edges + 
-            gwb2degree(fixed = TRUE, decay=2.85) +
-            b2star(k = 2, attr = "cat_commit", base = c(2,3)) +
+        x ~ ~ edges + 
+            gwb2degree(fixed = TRUE, decay=2.85) + isolates() + 
+            F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "high") ) +
+            F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "low")) +
+            gwb2dsp(fixed=TRUE, decay = 0.75) +
             b2cov("countries") + b2cov("buyers") +
             b1cov("prop_commit") * b2cov("risk") +
-            b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") + 
-            edgecov(as.sociomatrix(y), attrname = "past_net") ,
-            #gwb2dsp(fixed=TRUE, decay = 0.01), 
+            b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy"), 
         control = control.ergm(parallel = 10, parallel.type = "PSOCK")
     ),
     .progress = TRUE)
@@ -117,7 +117,7 @@ out |>
     theme(legend.position = c(0.9,0.1), legend.position.inside = TRUE)
 
 ggsave(
-    filename = "tergms_bipartite_geometric_250828.png", path = "figures/", device = "png",
+    filename = "tergms_bipartite_geometric_260607.png", path = "figures/", device = "png",
     plot = last_plot() + theme_light(base_size = 8), width = 6, height = 4, dpi = 400
 )
 
