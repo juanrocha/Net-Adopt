@@ -34,17 +34,14 @@ load("data/cleaned_networks_non-cerrado.Rda")
 tic()
 fit0 <- ergm(
     net[[8]] ~ edges + 
-        #b1starmix(k = 2, attr = "cat_commit") + 
-        #b2starmix(k = 2, attr = "cat_commit", base = c(2,3)) +
+        gwb2degree(fixed = TRUE, decay=2.85) + isolates() + 
+        F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "high") ) +
+        F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "low")) +
+        gwb2dsp(fixed=TRUE, decay = 0.75) +
+        #b2star(k = 2, attr = "cat_commit") +
         b2cov("countries") + b2cov("buyers") +
         b1cov("prop_commit") * b2cov("risk") +
-        b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") +
-        ##diff("prop_commit") + diff("risk") #+
-        #gwb2degree(fixed = TRUE, decay = 2.86) + 
-        gwb1degree(fixed = TRUE, decay = 0.6) +
-        edgecov(as.sociomatrix(net[[1]]), attrname = "past_net") +
-        ##gwb1dsp(fixed=TRUE, decay = 0.5) +
-        gwb2dsp(fixed=TRUE, decay = 0.75),
+        b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy"),
     # short ergm, change  MCMLE.maxit = 60
     control = control.ergm(parallel = 10, parallel.type = "PSOCK") 
 )
