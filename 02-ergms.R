@@ -14,21 +14,21 @@ load("data/cleaned_networks_non-cerrado.Rda")
 # df_idx <- tibble(id = seq_along(net)) |> 
 #     mutate(id_1 = lag(id))
 ## Not needed by the way that edgecov works, I can set it up on the map(ergm) section
-# net[2:length(net)] <- map2(
-#     .x = net[2:length(net)],
-#     .y = net[1:length(net)-1],
-#     .f = function(x,y){
-#         m <- as.sociomatrix(y)
-#         # complete the matrix with zeroes to make it one mode
-#         m <- m |> 
-#             # complete dimensions of the m to make it one mode:
-#             rbind(matrix(0, nrow = (2900- nrow(m)), ncol = ncol(m))) |> 
-#             cbind(matrix(0, nrow = 2900, ncol = (2900 - ncol(m)))) 
-#         
-#         x %e% "past_net" <- m
-#         return(x)
-#     }
-# )
+net[2:length(net)] <- map2(
+    .x = net[2:length(net)],
+    .y = net[1:length(net)-1],
+    .f = function(x,y){
+        m <- as.sociomatrix(y)
+        # complete the matrix with zeroes to make it one mode
+        m <- m |>
+            # complete dimensions of the m to make it one mode:
+            rbind(matrix(0, nrow = (2900- nrow(m)), ncol = ncol(m))) |>
+            cbind(matrix(0, nrow = 2900, ncol = (2900 - ncol(m))))
+
+        x %e% "past_net" <- m
+        return(x)
+    }
+)
 
 ## tests: b1 municipalities, b2 companies
 tic()
@@ -87,7 +87,9 @@ fits <- map2(
             gwb2dsp(fixed=TRUE, decay = 0.75) +
             b2cov("countries") + b2cov("buyers") +
             b1cov("prop_commit") * b2cov("risk") +
-            b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy"), 
+            b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") + 
+            edgecov(as.sociomatrix(y), attrname = "past_net") ,
+            #gwb2dsp(fixed=TRUE, decay = 0.01), 
         control = control.ergm(parallel = 10, parallel.type = "PSOCK")
     ),
     .progress = TRUE)
@@ -117,7 +119,7 @@ out |>
     theme(legend.position = c(0.9,0.1), legend.position.inside = TRUE)
 
 ggsave(
-    filename = "tergms_bipartite_geometric_260607.png", path = "figures/", device = "png",
+    filename = "tergms_bipartite_geometric_250828.png", path = "figures/", device = "png",
     plot = last_plot() + theme_light(base_size = 8), width = 6, height = 4, dpi = 400
 )
 
