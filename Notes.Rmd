@@ -37,6 +37,7 @@ for failing. The repository of the project with all the code is at: <https://git
 - Check how the proportion of commitment change over time for nodes.
 - Table: terms expected interpretation from statistical point / and case point of view [Juan + Lorien]
 - Run the same set of terms on a static ergm [due 6 June / Juan].
+- Angela suggest fiting ergm without memory term: preguntar a Lorien.
 
 ### Meeting 20260428
 
