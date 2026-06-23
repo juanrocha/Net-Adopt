@@ -39,6 +39,16 @@ for failing. The repository of the project with all the code is at: <https://git
 - Run the same set of terms on a static ergm [due 6 June / Juan].
 - Angela suggest fiting ergm without memory term: preguntar a Lorien.
 
+### Meeting 20260623
+
+- ergm: run each year as a separate routine
+- adjust decay terms in `gwb2degree`. 
+- If it runs for a bit, run it for 10 iterations, simulate from the network and inspect what terms are not fitting well. Options: increase with a longer burning for the mcmc; it may be that one year is particulary difficult to fit. 
+- Use the **summary** to get the empirical counts of the values to help check what are the years that cause the problem (e.g. one year with a much lower count for the filter term high/low). It could be that we have too few nodes with a particular configuration of gwb2degree with high / low. Summary helps to tell the story why it fits in some years and no others.
+- Take out higher order terms and see if it fits
+
+- Next meeting: 26-28 Aug or first week Sept.
+
 ### Meeting 20260428
 
 - Talked with Lorien about the error below. We decided to fix the gwb2degree term and exclude b2star. With that we hope it fits. The problem is a heavy tail on the distribution of degree, and it's not one or two outliers
