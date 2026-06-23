@@ -2,7 +2,8 @@
 ## Angela suggested to run them with full dataset, Cerrado only and non-cerrado
 ## the dataset splits and networks were already created with 01-read_data.R
 
-library(tidyverse)
+library(dyplr)
+library(purrr)
 library(ergm)
 library(tictoc)
 
