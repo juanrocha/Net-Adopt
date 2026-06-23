@@ -7,8 +7,8 @@ library(ergm)
 library(tictoc)
 
 load("data/cleaned_networks_full.Rda") # working on this one with isolates
-load("data/cleaned_networks_cerrado.Rda")
-load("data/cleaned_networks_non-cerrado.Rda")
+# load("data/cleaned_networks_cerrado.Rda")
+# load("data/cleaned_networks_non-cerrado.Rda")
 
 ## set up tergm:
 # df_idx <- tibble(id = seq_along(net)) |> 
@@ -90,7 +90,7 @@ fits <- map2(
             b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") + 
             edgecov(as.sociomatrix(y), attrname = "past_net") 
             #gwb2dsp(fixed=TRUE, decay = 0.01), 
-        #control = control.ergm(parallel = 10, parallel.type = "PSOCK")
+        control = control.ergm(parallel = 50, parallel.type = "PSOCK")
     ),
     .progress = TRUE)
 toc() # 580s | 920s with the new terms for buyers and countries
