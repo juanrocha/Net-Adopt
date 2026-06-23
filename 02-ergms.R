@@ -89,7 +89,7 @@ fits <- map2(
             b2cov("countries") + b2cov("buyers") +
             b1cov("prop_commit") * b2cov("risk") +
             b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") + 
-            edgecov(as.sociomatrix(y), attrname = "past_net") 
+            edgecov(as.sociomatrix(y), attrname = "past_net"), 
             #gwb2dsp(fixed=TRUE, decay = 0.01), 
         control = control.ergm(parallel = 50, parallel.type = "PSOCK")
     ),
