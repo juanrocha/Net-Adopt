@@ -15,21 +15,21 @@ load("data/cleaned_networks_full.Rda") # working on this one with isolates
 # df_idx <- tibble(id = seq_along(net)) |> 
 #     mutate(id_1 = lag(id))
 ## Not needed by the way that edgecov works, I can set it up on the map(ergm) section
-net[2:length(net)] <- map2(
-    .x = net[2:length(net)],
-    .y = net[1:length(net)-1],
-    .f = function(x,y){
-        m <- as.sociomatrix(y)
-        # complete the matrix with zeroes to make it one mode
-        m <- m |>
-            # complete dimensions of the m to make it one mode:
-            rbind(matrix(0, nrow = (2900- nrow(m)), ncol = ncol(m))) |>
-            cbind(matrix(0, nrow = 2900, ncol = (2900 - ncol(m))))
-
-        x %e% "past_net" <- m
-        return(x)
-    }
-)
+# net[2:length(net)] <- map2(
+#     .x = net[2:length(net)],
+#     .y = net[1:length(net)-1],
+#     .f = function(x,y){
+#         m <- as.sociomatrix(y)
+#         # complete the matrix with zeroes to make it one mode
+#         m <- m |>
+#             # complete dimensions of the m to make it one mode:
+#             rbind(matrix(0, nrow = (2900- nrow(m)), ncol = ncol(m))) |>
+#             cbind(matrix(0, nrow = 2900, ncol = (2900 - ncol(m))))
+# 
+#         x %e% "past_net" <- m
+#         return(x)
+#     }
+# )
 
 ## tests: b1 municipalities, b2 companies
 # tic()
@@ -62,22 +62,29 @@ net[2:length(net)] <- map2(
 #     In ergm_MCMC_sample(s, control, theta = mcmc.init, verbose = max(verbose -  :
 #                                                                          Unable to reach target effective size in iterations alotted.
 #                                                                          
-# tic()
-# fit0 <- ergm(
-#     net[[2]] ~ edges + 
-#         b1starmix(k=2, attr="cat_commit", base = c(2,3)), 
-#         #gwb2degree(fixed = TRUE, decay=2.85) + gwb1degree(fixed = FALSE, cutoff = 500) ,
-#         ##gwb1dsp(fixed=TRUE, decay = 0.5) +
-#         #gwb2dsp(fixed=FALSE, cutoff = 100),
-#     control = control.ergm(parallel = 10, parallel.type = "PSOCK", MCMLE.maxit = 10)
-# )
-# toc() # 518s, decay gwb2degree = 2.85, significant.
+tic()
+fit0 <- ergm(
+    net[[8]] ~ edges +
+        gwb2degree(fixed = TRUE, decay=2.85) + isolates() +
+        F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "high") ) +
+        F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "low")) +
+        gwb2dsp(fixed=TRUE, decay = 0.75) +
+        b2cov("countries") + b2cov("buyers") +
+        b1cov("prop_commit") * b2cov("risk") +
+        b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") +
+        ## Note, If I set the attribute it does not work. So I pass the network here, and inside edgecov I give it the 
+        ## name past_net, so it appears in the summary. But there is no net attribute called past_net on the net pass in 
+        ## as.sociomatrix()
+        edgecov(as.sociomatrix(net[[7]]), attrname = "past_net" ),
+    control = control.ergm(parallel = 10, parallel.type = "PSOCK", MCMLE.maxit = 10)
+)
+toc() # 518s, decay gwb2degree = 2.85, significant.
 # # 10s, decay gwb2dsp =  2.3e-16, non-significant
 # # degrees in b1 and b2 are linear combinations so cannot be used together
 # summary(fit0)
 
 tic() ## run after meeting
-fits <- map2(
+fits <- safely(map2(
     .x = net[2:length(net)],
     .y = net[1:length(net)-1],
     function(x,y) ergm(
@@ -93,7 +100,7 @@ fits <- map2(
             #gwb2dsp(fixed=TRUE, decay = 0.01), 
         control = control.ergm(parallel = 50, parallel.type = "PSOCK")
     ),
-    .progress = TRUE)
+    .progress = TRUE))
 toc() # 580s | 920s with the new terms for buyers and countries
 # 1326.672 sec elapsed with gwb2dsp fixed 0.75, parallel 10 cores
 # 2300.104 sec elapsed with gwb3dsp and edgecov, parallel 10 cores, 38min

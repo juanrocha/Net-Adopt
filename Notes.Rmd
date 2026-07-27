@@ -15,78 +15,109 @@ meeting I keep track of your suggestions and list my to-do's with [],
 [X] means the task is complete. Below I paste some of the results from
 the ergms that worked.
 
-To refresh your memory, at the end of 2025 we agreed on fitting a `tergm` to 
-distinguish link formation from persistence. Given the difficulties on fitting 
-the model and reaching convergence, Lorien suggested to fit early years and late
-years instead than the full time series. That improve fitting, but still does not
-work for the early years. I managed to reproduce most of the geometric terms we
-have discussed in the past, except the ones suggested for controlling homophily:
-`b2nodematch` and `b2starmix`. 
+To refresh your memory, at the end of 2025 we agreed on fitting a
+`tergm` to distinguish link formation from persistence. Given the
+difficulties on fitting the model and reaching convergence, Lorien
+suggested to fit early years and late years instead than the full time
+series. That improve fitting, but still does not work for the early
+years. I managed to reproduce most of the geometric terms we have
+discussed in the past, except the ones suggested for controlling
+homophily: `b2nodematch` and `b2starmix`.
 
-Models take on average a day to a week to converge. But I often find models that
-do not finish or crash my computer (out of RAM). The most relevant model below
-is `mod4`, but to understand what where the offending terms, I fitted several
-models (`mod1`-`mod3`) adding one at the time. `mcmc.diagnostics` is promising.
+Models take on average a day to a week to converge. But I often find
+models that do not finish or crash my computer (out of RAM). The most
+relevant model below is `mod4`, but to understand what where the
+offending terms, I fitted several models (`mod1`-`mod3`) adding one at
+the time. `mcmc.diagnostics` is promising.
 
-When your suggestion doesn't work, I keep track of the type of error or reasons
-for failing. The repository of the project with all the code is at: <https://github.com/juanrocha/Net-Adopt>
-
+When your suggestion doesn't work, I keep track of the type of error or
+reasons for failing. The repository of the project with all the code is
+at: <https://github.com/juanrocha/Net-Adopt>
 
 ## Meetings
 
 - Check how the proportion of commitment change over time for nodes.
-- Table: terms expected interpretation from statistical point / and case point of view [Juan + Lorien]
+- Table: terms expected interpretation from statistical point / and case
+  point of view [Juan + Lorien]
 - Run the same set of terms on a static ergm [due 6 June / Juan].
 - Angela suggest fiting ergm without memory term: preguntar a Lorien.
 
 ### Meeting 20260623
 
 - ergm: run each year as a separate routine
-- adjust decay terms in `gwb2degree`. 
-- If it runs for a bit, run it for 10 iterations, simulate from the network and inspect what terms are not fitting well. Options: increase with a longer burning for the mcmc; it may be that one year is particulary difficult to fit. 
-- Use the **summary** to get the empirical counts of the values to help check what are the years that cause the problem (e.g. one year with a much lower count for the filter term high/low). It could be that we have too few nodes with a particular configuration of gwb2degree with high / low. Summary helps to tell the story why it fits in some years and no others.
+- adjust decay terms in `gwb2degree`.
+- If it runs for a bit, run it for 10 iterations, simulate from the
+  network and inspect what terms are not fitting well. Options: increase
+  with a longer burning for the mcmc; it may be that one year is
+  particulary difficult to fit.
+- Use the **summary** to get the empirical counts of the values to help
+  check what are the years that cause the problem (e.g. one year with a
+  much lower count for the filter term high/low). It could be that we
+  have too few nodes with a particular configuration of gwb2degree with
+  high / low. Summary helps to tell the story why it fits in some years
+  and no others.
 - Take out higher order terms and see if it fits
-
 - Next meeting: 26-28 Aug or first week Sept.
 
 ### Meeting 20260428
 
-- Talked with Lorien about the error below. We decided to fix the gwb2degree term and exclude b2star. With that we hope it fits. The problem is a heavy tail on the distribution of degree, and it's not one or two outliers
+- Talked with Lorien about the error below. We decided to fix the
+  gwb2degree term and exclude b2star. With that we hope it fits. The
+  problem is a heavy tail on the distribution of degree, and it's not
+  one or two outliers
 
 ### Meeting 20260331
 
 - Options
-- `b2nodematch` is not geometrically weighted. Try `gwdegree` with attribute / filter, that should solve it. Using f operator to apply only the gwdegree with nodes with the attribute. Easiest way is to apply to the term where it does it match. Filter in a way that leaves only the when the companies match, but B1 nodes need to stay there because it is a bipartite. Additional attribute with low and high for B1, so they stay and select the correct things in B2. Three gwdegree, one with everything, one with filter in 'low' for cat_commit, and one for 'high' for 'cat_commit'. If this works, we do not need `b2nodematch`.
-- Use Pavel's tutorials for the filtering function (section 4: https://statnet.org/workshop-advanced-ergm/advanced_ergm_tutorial.html#4_Term_operators)
+- `b2nodematch` is not geometrically weighted. Try `gwdegree` with
+  attribute / filter, that should solve it. Using f operator to apply
+  only the gwdegree with nodes with the attribute. Easiest way is to
+  apply to the term where it does it match. Filter in a way that leaves
+  only the when the companies match, but B1 nodes need to stay there
+  because it is a bipartite. Additional attribute with low and high for
+  B1, so they stay and select the correct things in B2. Three gwdegree,
+  one with everything, one with filter in 'low' for cat_commit, and one
+  for 'high' for 'cat_commit'. If this works, we do not need
+  `b2nodematch`.
+- Use Pavel's tutorials for the filtering function (section 4:
+  <https://statnet.org/workshop-advanced-ergm/advanced_ergm_tutorial.html#4_Term_operators>)
 
-**Errors**
-> Error: In term ‘gwb2degree’ in package ‘ergm’ (called from term ‘Form1’ in package ‘tergm’, called from term ‘N’ in package ‘ergm.multi’, called from term ‘Form’ in package ‘tergm’): unused argument (gw.cutoff = base::quote(1000))
-In addition: Warning message:
-In NetSeries(nw, times, NA.impute = control$CMLE.NA.impute) :
-  Active vertex set varies from time point to time point. Estimation may not work.
-
-
+**Errors** \> Error: In term ‘gwb2degree’ in package ‘ergm’ (called from
+term ‘Form1’ in package ‘tergm’, called from term ‘N’ in package
+‘ergm.multi’, called from term ‘Form’ in package ‘tergm’): unused
+argument (gw.cutoff = base::quote(1000)) In addition: Warning message:
+In NetSeries(nw, times, NA.impute = control\$CMLE.NA.impute) : Active
+vertex set varies from time point to time point. Estimation may not
+work.
 
 ### Meeting 20260310
 
-- Should risk be an attribute of the municipality, not of the company? Risk is property of the municipality
-- Endogeneity problem on the risk, the moment we randomize, the risk should be recalculated. Remove term covariate for risk in companies, and remove the interaction term.
-    - b2cov.risk
-    - b1cov.prop_commit:b2cov.risk
+- Should risk be an attribute of the municipality, not of the company?
+  Risk is property of the municipality
+- Endogeneity problem on the risk, the moment we randomize, the risk
+  should be recalculated. Remove term covariate for risk in companies,
+  and remove the interaction term.
+  - b2cov.risk
+  - b1cov.prop_commit:b2cov.risk
 - Commitment remove at the municipality level: b1cov.prop_commit
-- Concern: trying to fit the variables in both sides might be the reason to 
-- b2start is accounting for municipality, is looking if everything involved has the same values:
-high commitment companies interact with high commitment municipalities, and low commitment companies interact with low commitment municipalities.
-    - b2star
+- Concern: trying to fit the variables in both sides might be the reason
+  to
+- b2start is accounting for municipality, is looking if everything
+  involved has the same values: high commitment companies interact with
+  high commitment municipalities, and low commitment companies interact
+  with low commitment municipalities.
+  - b2star
 - Replace the b2start with b2nodematch attr="cat_commit"
 
 ### Meeting 20251117
 
 - [x] Run fewer years in the tergm, maybe 3 to 4, an early and a late
-    - Fit one model for end, another for begging,
-    - slice smaller on periods of 2 yrs (possibly improvements on
-computation time) 
-    - must include all same nodes over the observation periods. Include term for `isolates` \~ could be difficult for model to fit. Isolates might be biasing the degree distributions.
+  - Fit one model for end, another for begging,
+  - slice smaller on periods of 2 yrs (possibly improvements on
+    computation time)
+  - must include all same nodes over the observation periods. Include
+    term for `isolates` \~ could be difficult for model to fit. Isolates
+    might be biasing the degree distributions.
 
 Geometric model without homophily, last 3 years:
 
@@ -163,9 +194,9 @@ In addition: Warning messages:
 ```
 
 - [] `b2nodematch` give us the homophily term with diff = TRUE, this one
-ignores the b1mode. If 2 nodes on b2 match on the attribute, do they tie
-to the same node on b1 (municipalities). Test as replacement for
-`b2starmix`
+  ignores the b1mode. If 2 nodes on b2 match on the attribute, do they
+  tie to the same node on b1 (municipalities). Test as replacement for
+  `b2starmix`
 
 ```         
     Error: 
@@ -396,7 +427,7 @@ AIC: 114615  BIC: 114950  (Smaller is better. MC Std. Err. = 5.817)
 
 ### Meeting 20251020
 
-- [X] Recode cat_commit not with an NA but with with a level == 0
+- [x] Recode cat_commit not with an NA but with with a level == 0
 
 **Failing:**
 
@@ -420,13 +451,15 @@ ergm_MCMC_sample(s, control, theta = mcmc.init, verbose = max(verbose -
 ```
 
 - [] How do we deal with time: before / after implementation of the
-legislation. Do not use the tergm in all years. Use the tergms to
-explore the idea of stickyness
+  legislation. Do not use the tergm in all years. Use the tergms to
+  explore the idea of stickyness
 
--   How commitments change over time, compute for exploration:
-    commitments per year
--   Persistence side of eq is what controls for stickyness
--   use the same formula for the Formation and Persistence terms
+- How commitments change over time, compute for exploration: commitments
+  per year
+
+- Persistence side of eq is what controls for stickyness
+
+- use the same formula for the Formation and Persistence terms
 
 Interpretations: - `gwb2dsp`: centered on companies, it measures the
 tendency of companies to share the same municipalities - negative sign
@@ -434,16 +467,16 @@ means they tend to share centrality.
 
 ### Meeting 20250829
 
-- [X] Replace `cat_commit` for municipalities with `NA`s, and then run
-`b1starmix` because we want it centered on municipalities. It should
-read: `b2starmix.2.cat_commit.NA.high b2starmix.2.cat_commit.NA.low`
+- [x] Replace `cat_commit` for municipalities with `NA`s, and then run
+  `b1starmix` because we want it centered on municipalities. It should
+  read: `b2starmix.2.cat_commit.NA.high b2starmix.2.cat_commit.NA.low`
 
 > Done but it doesn't work due to Error: In term ‘b2starmix’ in package
 > ‘ergm’: Attribute ‘"cat_commit"’ has missing data, which is not
 > currently supported by ergm
 
-- [X] Use the `gw1degree` on municipalities. make sure to explore the decay
-on a short `ergm`.
+- [x] Use the `gw1degree` on municipalities. make sure to explore the
+  decay on a short `ergm`.
 
 ```         
 Call: ergm(formula = net[[8]] \~ edges + b2cov("countries") +
@@ -485,25 +518,25 @@ Residual Deviance: 86511 on 1416902 degrees of freedom
 AIC: 86539 BIC: 86709 (Smaller is better. MC Std. Err. = 0.5941)
 ```
 
-- [X] another option to run the multiple year term is using the stergm
-command.
+- [x] another option to run the multiple year term is using the stergm
+  command.
 
 - [] once the model is working for the full network over time, replicate
-the cerrado vs non-cerrado comparison.
+  the cerrado vs non-cerrado comparison.
 
 ### Meeting 20250226
 
-- [x] Add the `gwdegree` terms (this should help with convergence) 
-    - The interpretation of this term is not that they just have more ties, but
-it’s often called an ‘anti-preferential attachment’ term. If negative,
-it means that locations/producers that have ties tend in general to have
-more ties. If positive, it tends to show that there’s an even
-distribution of ties. 
-- [x] Run the `gw2dp` with the parameters suggested
-by Lorien to try to find a good decay for it 
-- [x] Add the tergm term 
-- [] At this point I think we should look at the output and decide whether we
-should add the `b2starmix` 
+- [x] Add the `gwdegree` terms (this should help with convergence)
+  - The interpretation of this term is not that they just have more
+    ties, but it’s often called an ‘anti-preferential attachment’ term.
+    If negative, it means that locations/producers that have ties tend
+    in general to have more ties. If positive, it tends to show that
+    there’s an even distribution of ties.
+- [x] Run the `gw2dp` with the parameters suggested by Lorien to try to
+  find a good decay for it
+- [x] Add the tergm term
+- [] At this point I think we should look at the output and decide
+  whether we should add the `b2starmix`
 - [x] Add `b2startmix` (if we decide is a good next step)
 
 ```         
@@ -516,68 +549,65 @@ their smallest attainable values. Their coefficients will be fixed at
 
 ### meeting 241216
 
--   Entre mas agreements mas diversificacion de links: GWESP
--   Interaction term between b1:b2
--   un atributo que sea de los dos, normalizado por la media
-    -   \% commitment
-    -   mean_risk
--   difference entre los estadisticos que tienen las mismas unidades una
-    vez estan normalizados.
+- Entre mas agreements mas diversificacion de links: GWESP
+- Interaction term between b1:b2
+- un atributo que sea de los dos, normalizado por la media
+  - \% commitment
+  - mean_risk
+- difference entre los estadisticos que tienen las mismas unidades una
+  vez estan normalizados.
 
 ### meeting 241112
 
--   Re run same model with:
-    -   only cerrado and non-cerrado municipalities [done]
-    -   drop the area normalization so effects are a bit bigger but
-        control for municipality area [done]
-    -   compare AIC to drop models with small coeffs that contracdict
-        themselves.
+- Re run same model with:
+  - only cerrado and non-cerrado municipalities [done]
+  - drop the area normalization so effects are a bit bigger but control
+    for municipality area [done]
+  - compare AIC to drop models with small coeffs that contracdict
+    themselves.
 
 ### meeting 240609
 
--   New strategy for interaction effect between risk and commitment. Two
-    options
-    -   Categorical: Define dummies with 1/0
-    -   Continuous: % commitment vs normalized deforestation risk /
-        area.
--   Try linear regressions following lit review on homophily.
+- New strategy for interaction effect between risk and commitment. Two
+  options
+  - Categorical: Define dummies with 1/0
+  - Continuous: % commitment vs normalized deforestation risk / area.
+- Try linear regressions following lit review on homophily.
 
 ### Meeting 240404
 
--   Viaje de Angela sirvio para fortalecer contactos con Selva y
-    Smithsonian.
+- Viaje de Angela sirvio para fortalecer contactos con Selva y
+  Smithsonian.
 
 ### Meeting 230427
 
--   ergms with weighted, compare years [done without weights, ergm with
-    weights do not converge]
--   trajectories through time of companies in the soy / risk space
-    [done]
--   diff-in-diff for the treatment of signing agreement. You need
-    companies wihtout agreement to test before / after [discussed:
-    unlikely to work due to lack of matching, very few companies
-    committed with features that are unique in the dataset (high export,
-    high risk)]
--   ergm term diff() commitment in company (1/0) - municipality
-    normalized deforestation risk (0:1)
+- ergms with weighted, compare years [done without weights, ergm with
+  weights do not converge]
+- trajectories through time of companies in the soy / risk space [done]
+- diff-in-diff for the treatment of signing agreement. You need
+  companies wihtout agreement to test before / after [discussed:
+  unlikely to work due to lack of matching, very few companies committed
+  with features that are unique in the dataset (high export, high risk)]
+- ergm term diff() commitment in company (1/0) - municipality normalized
+  deforestation risk (0:1)
 
 ### Meeting 230425
 
 Next steps:
 
--   Correlations across years
--   One-mode projection on municipalities and importing countries
--   Calculate the stochastic block model, p_between vs p_intra
--   Bipartite:
-    -   `bip ~ company_node_zdc + municipality_def_risk + comp_soy_tons +`
-        `prop_certified_soy + company_node_zdc * municiplatiy_def_risk`
+- Correlations across years
+- One-mode projection on municipalities and importing countries
+- Calculate the stochastic block model, p_between vs p_intra
+- Bipartite:
+  - `bip ~ company_node_zdc + municipality_def_risk + comp_soy_tons +`
+    `prop_certified_soy + company_node_zdc * municiplatiy_def_risk`
 
 ### Meeting 220215
 
 Rodrigo Botero - Fundacion para el desarrollo sostenible FDS
 
--   Good maps and on ground info Vision Amazonia (payment schemes PES) -
-    industry development
+- Good maps and on ground info Vision Amazonia (payment schemes PES) -
+  industry development
 
 Andres Zuluaga (PhD with Etter): head of World Bank lead PES program for
 sustainable cattle ranching, working now with TNC
@@ -588,13 +618,13 @@ Pastoral social (locally)
 
 ### Meeting 230130
 
--   Read update lit on difference between difussion, contagion, and
-    homophily. Make sure the ergm capture difussion. Test simple vs
-    complex contagion
--   Idea: model with weights -- do ppl with certification change their
-    sourceing or prop of sourcing? (weighted ergm)
--   Ho: Hi risk sites export less over time
--   H0: Commited companies reduce risk exposure
+- Read update lit on difference between difussion, contagion, and
+  homophily. Make sure the ergm capture difussion. Test simple vs
+  complex contagion
+- Idea: model with weights -- do ppl with certification change their
+  sourceing or prop of sourcing? (weighted ergm)
+- Ho: Hi risk sites export less over time
+- H0: Commited companies reduce risk exposure
 
 When modeling weights you can assume fixed networks if the structure is
 not changing much over time. Derive correlation over time over different
@@ -605,89 +635,103 @@ the dynamic contagion problem: is it temporal ergm or SAOM what we need?
 
 ## Readings
 
+### Rausch et al 2026 [<doi:https://doi.org/10.1126/science.aeg5368>]
+
+**The rise and fall of the Amazon Soy Moratorium** Science 2026
+
+- The Amazon Soy Moratorium did reduce deforestation since its
+  implementation, 35% ot 1.8Mha. Most traders terminated their
+  commitments in 2026.
+- However, ending the agreement potentially opens up the opportunity to
+  deforest again: up to 1.4 +- 0.67 Mha of additional deforestation in
+  the next decade = 745 +- 346M of metric tons of CO2e \~ Canada's
+  emissions. 9.1Mha of forest could be legally cleared in private
+  properties, and up to 28.7Mha in undesignated public forests.
+- there has been lobbying from companies to dismantle environmental
+  regulation, including satellite monitoring systems.
+
 ### Shalizi et al 2011
 
 **Homophily and contagion are generically confounded in observational
 social network studies** Sociological Methods & Research 40(2)
 
--   *"Do they act similarly because they are close in the network, due
-    to some form of influence that acts along network ties (or, as it is
-    often suggestively put, ‘‘contagion’’1)? Or rather, are they close
-    in the network because of these similarities, through the processes
-    known as assortative mixing on traits, or more simply as homophily"*
--   *"latent homophily and contagion are generically con- founded with
-    each other (see the second section), and any direct contagion
-    effects cannot be nonparametrically identified from observational
-    data."*
--   *" the effort may prove to be inadequate if any unobserved
-    covariates have a part in both tie selection and in service
-    adoption. This brings us to our fundamental point: To attempt to
-    assign strengths to influence or contagion as opposed to homophily
-    presupposes that the distinc- tion is identifiable, and there have
-    been grounds to doubt this for some time."*
--   *"We now show that in fact, contagion effects are nonparametrically
-    un- identifiable in the presence of latent homophily—that there is
-    just no way to separate selection from influence observationally."*
--   *"the most successful attempts at explicit modeling that handle both
-    homophily and influence, as found in the work of Leenders (2005) and
-    Steglich, Snijders, and Pearson (2004), involve, all at once, strong
-    parametric (exponential-family) assumptions, plus the assumption
-    that observable covariates carry all of the dependence from X to Y
-    and A; the latter is also implicitly assumed by the matching methods
-    of Aral et al. (2009)."*
+- *"Do they act similarly because they are close in the network, due to
+  some form of influence that acts along network ties (or, as it is
+  often suggestively put, ‘‘contagion’’1)? Or rather, are they close in
+  the network because of these similarities, through the processes known
+  as assortative mixing on traits, or more simply as homophily"*
+- *"latent homophily and contagion are generically con- founded with
+  each other (see the second section), and any direct contagion effects
+  cannot be nonparametrically identified from observational data."*
+- *" the effort may prove to be inadequate if any unobserved covariates
+  have a part in both tie selection and in service adoption. This brings
+  us to our fundamental point: To attempt to assign strengths to
+  influence or contagion as opposed to homophily presupposes that the
+  distinc- tion is identifiable, and there have been grounds to doubt
+  this for some time."*
+- *"We now show that in fact, contagion effects are nonparametrically
+  un- identifiable in the presence of latent homophily—that there is
+  just no way to separate selection from influence observationally."*
+- *"the most successful attempts at explicit modeling that handle both
+  homophily and influence, as found in the work of Leenders (2005) and
+  Steglich, Snijders, and Pearson (2004), involve, all at once, strong
+  parametric (exponential-family) assumptions, plus the assumption that
+  observable covariates carry all of the dependence from X to Y and A;
+  the latter is also implicitly assumed by the matching methods of Aral
+  et al. (2009)."*
 
 So ERGMs wont do to this problem, neither regression matching. Here is
 an option:
 
--   *"By focusing on unreciprocated directed edges—pairs (i,j) where Aij
-    = 1 but Aji = 0, so that j’s prior outcome can be said to influence
-    i’s present, but not i’s prior outcome on j’s present—one can
-    consider the distributions of the outcomes conditional on their
-    partner’s pre- vious outcome, Yi(t)jYj(t - 1) and Yj(t)jYi(t - 1)
-    (though other observable covariates [Zi, Zj] may also be conditioned
-    on). An asymmetry here, revealed by the difference in the
-    corresponding regression coefficients, might then be due to some
-    influence being transmitted along the asymmetric edge, and not due
-    to external common causes (e.g., a new fast food restaurant) or
-    other behaviors attributable to latent characteristics... **it works
-    as a test for direct influence in some models**."*
+- *"By focusing on unreciprocated directed edges—pairs (i,j) where Aij =
+  1 but Aji = 0, so that j’s prior outcome can be said to influence i’s
+  present, but not i’s prior outcome on j’s present—one can consider the
+  distributions of the outcomes conditional on their partner’s pre-
+  vious outcome, Yi(t)jYj(t - 1) and Yj(t)jYi(t - 1) (though other
+  observable covariates [Zi, Zj] may also be conditioned on). An
+  asymmetry here, revealed by the difference in the corresponding
+  regression coefficients, might then be due to some influence being
+  transmitted along the asymmetric edge, and not due to external common
+  causes (e.g., a new fast food restaurant) or other behaviors
+  attributable to latent characteristics... **it works as a test for
+  direct influence in some models**."*
 
 But they showed that under two conditions it breaks (model can't be
 trusted): first, influencers differ systematically in their values of X
 covariates; and second, different neighbourhoods of X have differetn
 local (linear) relationships to Y.
 
--   *" latent homophilous variables can produce a substantial apparent
-    contagion effect, including the asymmetry expected of actual
-    contagion."*
+- *" latent homophilous variables can produce a substantial apparent
+  contagion effect, including the asymmetry expected of actual
+  contagion."*
 
 Then they go on testing another mechanism on a voter model, where people
 change relationships and opinions over time depending on their
 neighbourhood. Two communities emerge:
 
--   *"On regular lattices, this mechanism causes the voter model to
-    self-organize into spatially homogeneous domains, with slowly
-    shifting boundaries between them...social type is an indirect cue to
-    network neighborhood, and accordingly predicts choices"*
+- *"On regular lattices, this mechanism causes the voter model to
+  self-organize into spatially homogeneous domains, with slowly shifting
+  boundaries between them...social type is an indirect cue to network
+  neighborhood, and accordingly predicts choices"*
 
--   *"individuals’ choices are not independent conditional on their
-    traits, as is generally assumed in, for example, survey research;
-    diffusion creates the observed dependence... differences in social
-    types are at most related to differences in choices, not to the
-    actual content of those choices."*
+- *"individuals’ choices are not independent conditional on their
+  traits, as is generally assumed in, for example, survey research;
+  diffusion creates the observed dependence... differences in social
+  types are at most related to differences in choices, not to the actual
+  content of those choices."*
 
--   *"we have shown that latent homophily togeth- er with causal effects
-    from the homophilous trait cannot be readily distinguished,
-    observationally, from contagion or influence, and that this remains
-    true even if there is asymmetry between ‘‘senders’’ and
-    ‘‘receivers’’ in the network."*
+- *"we have shown that latent homophily togeth- er with causal effects
+  from the homophilous trait cannot be readily distinguished,
+  observationally, from contagion or influence, and that this remains
+  true even if there is asymmetry between ‘‘senders’’ and ‘‘receivers’’
+  in the network."*
 
--   *"we sketch three constructive responses that may be possible when
-    dealing with network data where the causal structure is imperfectly
-    understood or incompletely measured. These are to randomize over the
-    network, place bounds on unidentifiable effects, and **use the
-    division of the network into communities as a proxy for latent
-    homophily.**"*
+- *"we sketch three constructive responses that may be possible when
+  dealing with network data where the causal structure is imperfectly
+  understood or incompletely measured. These are to randomize over the
+  network, place bounds on unidentifiable effects, and **use the
+  division of the network into communities as a proxy for latent
+  homophily.**"*
 
 Randomize the network:
 
@@ -702,70 +746,69 @@ Randomize the network:
     controlling for the previous time point within the first half, YJ1
     (t - 1).
 
--   *"By repeating this procedure, then averaging over all iterations
-    (producing new partitions each time), there will be a non-zero
-    predictive ability if and only if there is actual contagion or
-    influence"*
+- *"By repeating this procedure, then averaging over all iterations
+  (producing new partitions each time), there will be a non-zero
+  predictive ability if and only if there is actual contagion or
+  influence"*
 
 Bounds (but they do not elaborate, they propose for future research):
 
--   *"even when param- eters (e.g., the causal effect of Yj(t - 1) on
-    Yi(t)) are observationally unidentifiable, the distribution of
-    observations may suffice to bound the parameters... If the bound on
-    this effect excluded zero, that would show the observed association
-    could not be due solely to homophily, but that some contagion must
-    also be present."*
+- *"even when param- eters (e.g., the causal effect of Yj(t - 1) on
+  Yi(t)) are observationally unidentifiable, the distribution of
+  observations may suffice to bound the parameters... If the bound on
+  this effect excluded zero, that would show the observed association
+  could not be due solely to homophily, but that some contagion must
+  also be present."*
 
 Network clustering:
 
--   *" ‘‘Homophily’’ means simply that individuals tend to choose
-    neighbors that resemble them; this tendency will be especially
-    pronounced if pairs of neighbors also have other neighbors in
-    common, since these pairings will also be driven by homophily. "*
--   *"By the arguments we have presented so far, such
-    control-by-clustering will generally be unable to eliminate the
-    confounding.18 However, in conjunction with the bounds approach
-    mentioned earlier, conditioning on estimated community memberships
-    might still noticeably reduce the confounding. "*
+- *" ‘‘Homophily’’ means simply that individuals tend to choose
+  neighbors that resemble them; this tendency will be especially
+  pronounced if pairs of neighbors also have other neighbors in common,
+  since these pairings will also be driven by homophily. "*
+- *"By the arguments we have presented so far, such
+  control-by-clustering will generally be unable to eliminate the
+  confounding.18 However, in conjunction with the bounds approach
+  mentioned earlier, conditioning on estimated community memberships
+  might still noticeably reduce the confounding. "*
 
 ### Shalizi and Rinaldo 2013
 
 **Consistency under sampling of exponential random graph models** Annals
 of Statistics 41 (2) 508-535
 
--   *"the parameter estimates obtained from a sub-network may not
-    provide reliable estimates of, or may not even be relatable to, the
-    parameters of the whole network, rendering the task of statistical
-    inference based on a sub-network ill-posed. We formalize this
-    question using the notion of “projective families” from the theory
-    of stochastic processes. We say that a model is projective when the
-    same parameters can be used for both the whole network and any of
-    its sub-networks."*
--   *"Typically, however, ERGMs are not dyadic independence models...
-    Empirically, when using such specifications, one often finds a
-    nontrivial coefficient for such “transitivity” or “clustering,” over
-    and above homophily [26]. It is because of such findings that we ask
-    whether the parameters in these models are projective"*
--   *" Since these models are not projective, however, it is impossible
-    to improve parameter estimates by getting more data, since
-    parameters for smaller sub-graphs just cannot be extrapolated to
-    larger graphs (or vice versa). We thus have a near-dichotomy for
-    ERGMs. Dyadic independence models have separable and independent
-    increments to the statistics, and the resulting family is
-    projective. However, specifications where the sufficient statistics
-    count larger motifs cannot have separable increments, and
-    projectibility does not hold. Such an ERGM may provide a good
-    description of a given social network on a certain set of nodes, but
-    it cannot be projected to give predictions on any larger or more
-    global graph from which that one was drawn."*
--   *"Dyadic independence models are projective models, but are
-    sociologically extremely implausible, and certainly do not manage to
-    reproduce the data well. More interesting specifications, involving
-    clustering terms, never have separable increments. We thus have an
-    impasse which it seems can only be resolved by going to a different
-    family of specifications. One possibility—which, however, requires
-    more and different data—is to model the evolution of networks over
-    time [58]."*
+- *"the parameter estimates obtained from a sub-network may not provide
+  reliable estimates of, or may not even be relatable to, the parameters
+  of the whole network, rendering the task of statistical inference
+  based on a sub-network ill-posed. We formalize this question using the
+  notion of “projective families” from the theory of stochastic
+  processes. We say that a model is projective when the same parameters
+  can be used for both the whole network and any of its sub-networks."*
+- *"Typically, however, ERGMs are not dyadic independence models...
+  Empirically, when using such specifications, one often finds a
+  nontrivial coefficient for such “transitivity” or “clustering,” over
+  and above homophily [26]. It is because of such findings that we ask
+  whether the parameters in these models are projective"*
+- *" Since these models are not projective, however, it is impossible to
+  improve parameter estimates by getting more data, since parameters for
+  smaller sub-graphs just cannot be extrapolated to larger graphs (or
+  vice versa). We thus have a near-dichotomy for ERGMs. Dyadic
+  independence models have separable and independent increments to the
+  statistics, and the resulting family is projective. However,
+  specifications where the sufficient statistics count larger motifs
+  cannot have separable increments, and projectibility does not hold.
+  Such an ERGM may provide a good description of a given social network
+  on a certain set of nodes, but it cannot be projected to give
+  predictions on any larger or more global graph from which that one was
+  drawn."*
+- *"Dyadic independence models are projective models, but are
+  sociologically extremely implausible, and certainly do not manage to
+  reproduce the data well. More interesting specifications, involving
+  clustering terms, never have separable increments. We thus have an
+  impasse which it seems can only be resolved by going to a different
+  family of specifications. One possibility—which, however, requires
+  more and different data—is to model the evolution of networks over
+  time [58]."*
 
 ### McFowland and Shalizi
 
@@ -773,9 +816,9 @@ of Statistics 41 (2) 508-535
 inferring latent locations** Journal of the American Statistical
 Association
 
--   *"This homophily means that network neighbors are informative about
-    latent qualities a node possesses, providing an alternative route by
-    which a node’s behavior can be predicted from their neighbors."*
+- *"This homophily means that network neighbors are informative about
+  latent qualities a node possesses, providing an alternative route by
+  which a node’s behavior can be predicted from their neighbors."*
 
 They present the equations of the ideal model, and the estimated model,
 where they use a community detection result to control for homophily.
@@ -784,15 +827,14 @@ unobserved co-variates. For the model to work, an assumption of
 independence needs to be fulfiled and discussed: that the covariates are
 ortogonal to the behaviour given the estimated community (see formula).
 
--   *"There may be attributes that are incorporated into Ci which are
-    relevant only to network ties, not behavior, and independent of the
-    other attributes; these are of no concern to us, and can be regarded
-    as part of the noise in the tie-formation process. Network models
-    that satisfy this assumption—that is, that all ties are
-    conditionally independent of each other given the latent variables
-    for each node—are some- times called “graphons” or “w-random graphs”
-    and are clearly exchangeable (permutation-invariant) over nodes."*
--   *"if all the variables relevant to tie-formation and node behavior
-    are observed, the ordinary least-square (OLS) estimator provides an
-    unbiased estimate (βˆOLS) of β"*
-
+- *"There may be attributes that are incorporated into Ci which are
+  relevant only to network ties, not behavior, and independent of the
+  other attributes; these are of no concern to us, and can be regarded
+  as part of the noise in the tie-formation process. Network models that
+  satisfy this assumption—that is, that all ties are conditionally
+  independent of each other given the latent variables for each node—are
+  some- times called “graphons” or “w-random graphs” and are clearly
+  exchangeable (permutation-invariant) over nodes."*
+- *"if all the variables relevant to tie-formation and node behavior are
+  observed, the ordinary least-square (OLS) estimator provides an
+  unbiased estimate (βˆOLS) of β"*
