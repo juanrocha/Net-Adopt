@@ -82,9 +82,15 @@ toc() # 518s, decay gwb2degree = 2.85, significant.
 # # 10s, decay gwb2dsp =  2.3e-16, non-significant
 # # degrees in b1 and b2 are linear combinations so cannot be used together
 # summary(fit0)
+# 
+# Set it up in parallel
+library(future)
+library(furrr)
+
+plan("multisession", workers = 7) # only 7 ergms
 
 tic() ## run after meeting
-fits <- safely(map2(
+fits <- safely(future_map2(
     .x = net[2:length(net)],
     .y = net[1:length(net)-1],
     function(x,y) ergm(
@@ -96,9 +102,9 @@ fits <- safely(map2(
             b2cov("countries") + b2cov("buyers") +
             b1cov("prop_commit") * b2cov("risk") +
             b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") + 
-            edgecov(as.sociomatrix(y), attrname = "past_net"), 
+            edgecov(as.sociomatrix(y), attrname = "past_net") #, 
             #gwb2dsp(fixed=TRUE, decay = 0.01), 
-        control = control.ergm(parallel = 50, parallel.type = "PSOCK")
+       # control = control.ergm(parallel = 50, parallel.type = "PSOCK")
     ),
     .progress = TRUE))
 toc() # 580s | 920s with the new terms for buyers and countries
