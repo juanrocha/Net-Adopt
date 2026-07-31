@@ -87,12 +87,12 @@ toc() # 518s, decay gwb2degree = 2.85, significant.
 library(future)
 library(furrr)
 
-plan("multisession", workers = 7) # only 7 ergms
+plan("multisession", workers = 3) # only 7 ergms
 
 tic() ## run after meeting
 fits <- safely(future_map2(
-    .x = net[2:length(net)],
-    .y = net[1:length(net)-1],
+    .x = net[6:length(net)],
+    .y = net[5:length(net)-1],
     function(x,y) ergm(
         x ~ edges + 
             gwb2degree(fixed = TRUE, decay=2.85) + isolates() + 
