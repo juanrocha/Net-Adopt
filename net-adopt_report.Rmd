@@ -1,0 +1,139 @@
+---
+title: "Notes ERGMs"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+  toc: true
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(fs)
+library(ergm)
+library(tictoc)
+library(texreg)
+```
+
+Github repository with the code used:
+<https://github.com/juanrocha/Net-Adopt>
+
+When interpreting results, remember that `b1` are municipalities, and
+`b2` companies.
+
+## Dynamic analysis (`tergm`)
+
+```{r}
+load("data/termg_260504.Rda")
+```
+
+This is the model we discussed and were happy with by mid-May 2026. It
+fits the following model formula: 
+
+```{r }
+mod$formula
+```
+
+
+```{r warning=FALSE}
+mod |> broom::tidy() |> 
+    mutate(p_value = case_when(
+        p.value < 0.01 ~ "< 0.01",
+        p.value >=0.01 & p.value < 0.05 ~ "< 0.05",
+        p.value >= 0.05 ~ "> 0.05"
+    )) |>
+    separate(col = term, into =c("process", "term"), sep = "~") |>
+    mutate(term = as_factor(term) |> fct_rev()) |> 
+    ggplot(aes(estimate, term)) +
+    geom_point(aes(color = p_value, shape = p_value)) +
+    geom_errorbarh(aes(xmin = estimate - std.error, xmax = estimate + std.error,
+                       color = p_value), width = 0.5) +
+    scale_color_brewer(palette = "Set1") +
+    facet_wrap(~process, )
+    #theme(legend.position = c(0.9,0.1), legend.position.inside = TRUE)
+
+```
+
+```{r results='asis'}
+htmlreg(mod, bold = 0.05, 
+    custom.note = "Coefficients with $p < 0.05$ in **bold**.",)
+```
+
+
+## Static analysis (`ergm` + control year - 1 )
+
+The object `fits` is a list of models for the last three years of the
+time series. The formula used in the model is:
+
+```{r, echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE}
+# ergm(
+#     x ~ edges + 
+#         gwb2degree(fixed = TRUE, decay=2.85) + isolates() + 
+#         F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "high") ) +
+#         F(~gwb2degree(fixed = TRUE, decay=2.85), ~nodefactor("cat_commit", levels = "low")) +
+#         gwb2dsp(fixed=TRUE, decay = 0.75) +
+#         b2cov("countries") + b2cov("buyers") +
+#         b1cov("prop_commit") * b2cov("risk") +
+#         b1cov("soy")  + b2cov("prop_commit") * b1cov("risk") + b2cov("soy") + 
+#         edgecov(as.sociomatrix(y), attrname = "past_net") 
+# )
+
+```
+
+```{r}
+load("data/tergms_260813.Rda")
+fits <- transpose(fits) # because they were fitted with safely
+fits$error |> map(is.null) |> unlist() |> all() # no errors
+
+yrs <- names(fits$result)
+fits$result |> 
+    map(broom::tidy) |>
+    map2(.y = yrs, function(x,y) {
+        x <- add_column(x, year = y)
+        return(x)
+        }) |> 
+    bind_rows() |> 
+    mutate(
+        p_val = case_when(
+            p.value < 0.05 ~ "p < 0.05",
+            p.value > 0.1 ~ "p > 0.1",
+            .default = "0.05 > p < 0.1") |> 
+            as_factor() |> 
+            fct_relevel("p < 0.05", "0.05 > p < 0.1","p > 0.1"),
+        term = as_factor(term) |> fct_rev()) |> 
+    ggplot(aes(estimate, term)) + 
+    geom_point(aes(color = p_val)) + 
+    geom_errorbar(
+        aes(xmin = estimate - std.error, xmax = estimate + std.error, color = p_val), orientation = "y", width = 0.5) +
+    geom_vline(xintercept = 0, color = "grey", linetype =2) +
+    facet_wrap(~year) +
+    scale_color_brewer(palette = "Dark2")
+```
+
+```{r message=FALSE, warning=FALSE,results='asis'}
+htmlreg(
+    fits$result, bold = 0.05, 
+    custom.note = "Coefficients with $p < 0.05$ in **bold**.",
+    custom.coef.names = c("edges", "gwb2deg", "isolates", "nodefactor high commit", "nodefactor low commit", "gwb2dsp", "b2 countries", "b2 buyers", "b1 prop commit", "b2 risk", "b1 prop commit:b2 risk", "b1 soy", "b2 prop commit", "b1 risk", "b2 prop commit:b1 risk", "b2 soy", "past net"))
+```
+
+Here are the goodness of fit diagnostics, only the ones for the last
+model (2020) are plotted, but all others look alike.
+
+```{r, fig.width=7, fig.height=7}
+mcmc.diagnostics(fits$result[[3]])
+```
+
+```{r}
+tic()
+gof3 <- gof(fits$result[[3]])
+toc() # 75s
+```
+
+```{r dev.args=list(pointsize = 1), fig.height=6}
+#op <- par()
+par(mfrow = c(3,2))
+plot(gof3, cex = 1)
+```

@@ -92,7 +92,8 @@ plan("multisession", workers = 3) # only 7 ergms
 tic() ## run after meeting
 fits <- safely(future_map2(
     .x = net[6:length(net)],
-    .y = net[5:length(net)-1],
+    # crazy bug: 5:10-1 subtracts all the series, not the last one. In the future clarify with ()
+    .y = net[6:length(net)-1], 
     function(x,y) ergm(
         x ~ edges + 
             gwb2degree(fixed = TRUE, decay=2.85) + isolates() + 
