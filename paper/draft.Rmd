@@ -1,0 +1,31 @@
+---
+title: "Paper title"
+author: "Angela, Lorien & Juan"
+bibliography: refs.bib
+output:
+  pdf_document:
+    dev: pdf
+    keep_tex: true
+    toc: false
+    latex_engine: xelatex
+csl: /Users/juanrocha/Documents/styles/pnas.csl
+citecolor: blue
+documentclass: article
+fontsize: 10pt
+linkcolor: blue
+urlcolor: blue
+---
+
+Typically my Intro finish with a paragraph outlining the research question that the paper will answer...
+
+## Methods
+
+To that end, we investigated the probability of trading soy from deforestation prone areas in Brazil.
+
+**Data:** We used the Trase database [@lathuillière2022; @zuermgassen2020] and analyze version 2.6 that covers soy transactions in Brazil from 2004 to 2020 (accessed January 2024). The data is publicly available at <https://trase.earth/open-data/datasets/>. We only kept observations from 2013 onward due to the geographical and temporal completeness of the data, it is also the period when zero deforestation commitments were implemented. We discarded transactions labelled as domestic consumption and retained only transactions intended for international trade where both municipality of origin and exporter were known. Next, for every unique municipality and exporter relationship, we aggregated the data annually adding all soy movements (tonnes equivalent). We also calculated a weighted mean on the soy deforestation risk (a variable calculated by Trase, see [@zuermgassen2020]). Soy deforestation risk is defined as the total area in hectares of a target year that overlaps with deforestation prior to soy detection, Trase allocates this risk to actors based on units of production. Because there are multiple transactions per year in the data set between every unique pair of municipality and exporter, we aggregated the soy deforestation risk with a mean weighted by the amount of soy traded in each transaction. We also aggregated per year the number of transactions that came from the Cerrado region for every municipality - exporter pair.
+
+**Networks**: For every year in the data set, we created a bipartite network with soy transaction flows between every municipality and exporter company. A bipartite network is a social network with two types of actors (municipalities and exporter companies) that connect between each other class but not among actors of the same class. For municipalities we code the following node attributes: soy in tonnes exported per year, soy in log tonnes exported per year, mean deforestation risk (as defined above with a weighted mean), total deforestation risk (a sum for the year), number of transactions that come from the Cerrado region, proportion of soy that was traded under a zero deforestation commitment (either a company commitment or the soy moratorium), and a categorical variable for commitments that takes `low` if the proportion per year is less than 50%, `high` if it is higher than 50%, or `none` if no transaction was under a commitment. Similarly, for companies we coded the same node attributes, but included the following for modelling purposes: number of countries to which each exporter trade (per year), and number of buyers per year (buyers are typically companies who import the soy in the destination country). Last, our variable for deforestation risk is heavily skewed given there are a few actors who disproportionally trade orders of magnitude more than others. To avoid numerical issues on the statistical modelling, we re-scaled this variable to shrink the distribution towards a more normal shape by dividing our previous calculation of weighted mean by its median. Other strategies tested included logarithms, and standardizing (substracting the mean and dividing by the standard deviation) on the log scale; but we kept the first approach for interpretability.
+
+**Statistical modelling**: The central question of this study is whether actors in this network who adopt a zero deforestation commitment tend to actually source or export soy from other actors who in turn have high levels of commitment. In other words, is the sustainable behaviour spreading on the social network? Because the decision to trade with one partner or another is not independent of the social relationships already existing, one needs an statistical approach that can account for this lack of independence. We deploy exponential random graph models which were develop precisely to statistically account for this source of bias [@robins2007; @robins2007a]. Previous studies have not accounted for this potential source of error [REFS], making their conclusions prone to misinterpretation. For example, it is difficult to distinguish if trends in deforestation are result of zero deforestation commitments and their adoption among the actors trading resources link to deforestation, or some other unobserved driver.
+
+Here we approach this challenge from two modelling perspectives. First, we used a dynamic modelling approach that enable us to distinguish the features influencing the formation and persistence of trading links over time. We used the software packages `networkDynamic` [@butts2024], `tergm` [@carnegie2015; @pavel2014; @pavel2025], and `tsna` [@morris2025]. Second, we used a static modelling approach where we account for memory effects by including as edge covariate the trade relationships from the previous year. We used the software packages `ergm` [@handcock2025; @hunter2008; @pavel2023], `sna` [@butts2023], and `network`[@butts2015; @butts2008]. All our analyses were performed in R version 4.4.1 [@r-core]. In both modelling approaches we limited our analysis to the networks in years 2018 to 2020 because it is the period in the time series where zero deforestation commitments were adopted. Previous years produce models that do not converge due to the missing values or very low adoption of commitments. Table XX summarizes our regressors, their meaning in the context of our case study, and their statistical interpretation.
